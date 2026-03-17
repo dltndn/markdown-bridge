@@ -1,0 +1,25 @@
+import { contextBridge, ipcRenderer } from "electron";
+import type { ConversionRequest, JobUpdateEvent, MarkdownBridgeApi } from "../shared/contracts";
+
+const api: MarkdownBridgeApi = {
+  getEnvironmentStatus: () => ipcRenderer.invoke("app:getEnvironmentStatus"),
+  pickFiles: () => ipcRenderer.invoke("dialog:pickFiles"),
+  pickOutputDirectory: () => ipcRenderer.invoke("dialog:pickOutputDirectory"),
+  getCapabilities: () => ipcRenderer.invoke("conversion:getCapabilities"),
+  createJob: (request: ConversionRequest) => ipcRenderer.invoke("conversion:createJob", request),
+  getJob: (jobId: string) => ipcRenderer.invoke("conversion:getJob", jobId),
+  listJobs: () => ipcRenderer.invoke("conversion:listJobs"),
+  onJobUpdated: (listener) => {
+    const subscription = (_event: Electron.IpcRendererEvent, payload: JobUpdateEvent) => {
+      listener(payload);
+    };
+
+    ipcRenderer.on("conversion:jobUpdated", subscription);
+    return () => {
+      ipcRenderer.removeListener("conversion:jobUpdated", subscription);
+    };
+  }
+};
+
+contextBridge.exposeInMainWorld("markdownBridge", api);
+

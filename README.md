@@ -36,7 +36,7 @@ Start the Electron, preload, main, and renderer processes together.
 npm run dev
 ```
 
-The renderer is served by Vite on `http://localhost:5173`, and Electron waits for the renderer and compiled preload/main outputs before launching.
+The renderer is served by Vite on `http://localhost:5179`, and Electron waits for the renderer and compiled preload/main outputs before launching.
 
 ### Session Checklist
 

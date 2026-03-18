@@ -1,7 +1,7 @@
 import { app, BrowserWindow } from "electron";
 import path from "node:path";
 
-const RENDERER_DEV_URL = "http://localhost:5173";
+const RENDERER_DEV_URL = "http://localhost:5179";
 
 export function createMainWindow(): BrowserWindow {
   const window = new BrowserWindow({

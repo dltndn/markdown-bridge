@@ -21,6 +21,8 @@ export function ConversionForm({
   const [collisionPolicy, setCollisionPolicy] = useState<CollisionPolicy>("rename");
   const [submitting, setSubmitting] = useState(false);
   const supportedHint = useMemo(
+    // This hint is static today. If the form becomes capability-driven, cover the
+    // IPC-to-renderer wiring with a test instead of relying on copy-only regressions.
     () => "Core paths: DOCX -> MD, MD -> DOCX, MD -> PDF. PDF -> MD remains disabled in this scaffold.",
     []
   );
@@ -107,4 +109,3 @@ export function ConversionForm({
     </div>
   );
 }
-

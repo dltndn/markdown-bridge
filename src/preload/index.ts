@@ -14,12 +14,11 @@ const api: MarkdownBridgeApi = {
       listener(payload);
     };
 
-    ipcRenderer.on("conversion:jobUpdated", subscription);
+    ipcRenderer.on("conversion:subscribe", subscription);
     return () => {
-      ipcRenderer.removeListener("conversion:jobUpdated", subscription);
+      ipcRenderer.removeListener("conversion:subscribe", subscription);
     };
   }
 };
 
 contextBridge.exposeInMainWorld("markdownBridge", api);
-

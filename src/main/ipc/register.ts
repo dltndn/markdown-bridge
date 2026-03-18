@@ -1,4 +1,5 @@
-import { BrowserWindow, dialog, ipcMain } from "electron";
+import { dialog, ipcMain } from "electron";
+import type { BrowserWindow } from "electron";
 import type { ConversionRequest, JobUpdateEvent } from "../../shared/contracts";
 import { getConversionCapabilities } from "../services/capabilities";
 import { ConversionService } from "../services/conversion-service";
@@ -33,7 +34,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): ConversionServic
   registerHandle("conversion:listJobs", async () => conversionService.listJobs());
 
   conversionService.subscribe((event: JobUpdateEvent) => {
-    mainWindow.webContents.send("conversion:jobUpdated", event);
+    mainWindow.webContents.send("conversion:subscribe", event);
   });
 
   return conversionService;

@@ -22,6 +22,17 @@ type CreateMainLoggerOptions = {
 };
 
 const noop = (): void => undefined;
+const REDACTED_VALUE = "[redacted]";
+const SENSITIVE_LOG_KEYS = new Set([
+  "body",
+  "content",
+  "documentBody",
+  "documentContent",
+  "markdown",
+  "rawContent",
+  "rawText",
+  "extractedText"
+]);
 
 export const noopMainLogger: MainLogger = {
   debug: noop,
@@ -36,12 +47,13 @@ export function createMainLogger(options: CreateMainLoggerOptions = {}): MainLog
   const sink = options.sink;
 
   const emit = (level: MainLogLevel, event: string, details?: Record<string, unknown>): void => {
+    const sanitizedDetails = details ? sanitizeLogDetails(details) : undefined;
     const entry: MainLogEntry = {
       level,
       scope: "main",
       event,
       timestamp: now(),
-      ...(details ? { details } : {})
+      ...(sanitizedDetails ? { details: sanitizedDetails } : {})
     };
 
     sink?.(entry);
@@ -74,4 +86,30 @@ export function createMainLogger(options: CreateMainLoggerOptions = {}): MainLog
     warn: (event, details) => emit("warn", event, details),
     error: (event, details) => emit("error", event, details)
   };
+}
+
+function sanitizeLogDetails(details: Record<string, unknown>): Record<string, unknown> {
+  return sanitizeValue(details) as Record<string, unknown>;
+}
+
+function sanitizeValue(value: unknown, key?: string): unknown {
+  if (key && SENSITIVE_LOG_KEYS.has(key)) {
+    return REDACTED_VALUE;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeValue(item));
+  }
+
+  if (value && typeof value === "object") {
+    const sanitized: Record<string, unknown> = {};
+
+    for (const [childKey, childValue] of Object.entries(value as Record<string, unknown>)) {
+      sanitized[childKey] = sanitizeValue(childValue, childKey);
+    }
+
+    return sanitized;
+  }
+
+  return value;
 }

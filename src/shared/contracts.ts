@@ -46,6 +46,7 @@ export type JobItem = {
   status: JobItemStatus;
   errorCode: string | null;
   errorMessage: string | null;
+  errorDetails: string | null;
   createdAt: string;
   updatedAt: string;
 };

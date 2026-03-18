@@ -284,7 +284,8 @@ describe("ConversionService.createJob", () => {
       inputPath: firstInput,
       status: "failed",
       errorCode: "conversion_failed",
-      errorMessage: "Environment probe crashed unexpectedly."
+      errorMessage: "Conversion failed.",
+      errorDetails: "Environment probe crashed unexpectedly."
     });
     expect(settledJob.items[1]).toMatchObject({
       inputPath: secondInput,
@@ -339,7 +340,8 @@ describe("ConversionService.createJob", () => {
           inputPath: secondInput,
           status: "failed",
           errorCode: "conversion_failed",
-          errorMessage: "Pandoc failed for second input."
+          errorMessage: "Conversion failed.",
+          errorDetails: "Pandoc failed for second input."
         })
       ])
     );

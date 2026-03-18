@@ -22,6 +22,7 @@ type QueueEntry = {
 type ExecutePandoc = (args: string[], cwd: string) => Promise<void>;
 
 type NormalizedErrorCode = "invalid_configuration" | "output_write_failed";
+type ConversionFailurePatch = Pick<JobItem, "status" | "errorCode" | "errorMessage" | "errorDetails">;
 
 type NormalizedServiceError = Error & {
   code: NormalizedErrorCode;
@@ -76,7 +77,8 @@ export class ConversionService {
           targetFormat: request.targetFormat,
           status: "queued" as const,
           errorCode: null,
-          errorMessage: null
+          errorMessage: null,
+          errorDetails: null
         };
       })
     );
@@ -105,7 +107,8 @@ export class ConversionService {
             outputPath: null,
             status: "skipped" as const,
             errorCode: null,
-            errorMessage: "Skipped because the output file already exists."
+            errorMessage: "Skipped because the output file already exists.",
+            errorDetails: null
           };
         }
 
@@ -169,7 +172,8 @@ export class ConversionService {
       this.update(jobId, itemId, {
         status: "failed",
         errorCode: "input_not_found",
-        errorMessage: "Input file was not found."
+        errorMessage: "Input file was not found.",
+        errorDetails: null
       });
       return;
     }
@@ -182,7 +186,8 @@ export class ConversionService {
       this.update(jobId, itemId, {
         status: "failed",
         errorCode,
-        errorMessage: "This conversion path is not available in the current MVP scaffold."
+        errorMessage: "This conversion path is not available in the current MVP scaffold.",
+        errorDetails: null
       });
       return;
     }
@@ -192,7 +197,8 @@ export class ConversionService {
       this.update(jobId, itemId, {
         status: "failed",
         errorCode: "pandoc_not_found",
-        errorMessage: "Pandoc is not available on PATH."
+        errorMessage: "Pandoc is not available on PATH.",
+        errorDetails: null
       });
       return;
     }
@@ -201,7 +207,8 @@ export class ConversionService {
       this.update(jobId, itemId, {
         status: "failed",
         errorCode: "pdf_engine_missing",
-        errorMessage: "A PDF engine was not detected for Markdown to PDF export."
+        errorMessage: "A PDF engine was not detected for Markdown to PDF export.",
+        errorDetails: null
       });
       return;
     }
@@ -213,11 +220,7 @@ export class ConversionService {
       await this.executePandoc(args, path.dirname(item.outputPath));
       this.update(jobId, itemId, { status: "success" });
     } catch (error) {
-      this.update(jobId, itemId, {
-        status: "failed",
-        errorCode: "conversion_failed",
-        errorMessage: error instanceof Error ? error.message : "Pandoc execution failed."
-      });
+      this.update(jobId, itemId, buildConversionFailurePatch(error));
     }
   }
 
@@ -237,7 +240,8 @@ export class ConversionService {
     this.update(jobId, itemId, {
       status: "failed",
       errorCode: "conversion_failed",
-      errorMessage: error instanceof Error ? error.message : "Pandoc execution failed."
+      errorMessage: "Conversion failed.",
+      errorDetails: error instanceof Error ? error.message : String(error)
     });
   }
 
@@ -259,7 +263,8 @@ function buildUnsupportedFormatItem(
     targetFormat,
     status: "failed",
     errorCode: "unsupported_format",
-    errorMessage: "Unsupported file extension."
+    errorMessage: "Unsupported file extension.",
+    errorDetails: null
   };
 }
 
@@ -279,7 +284,8 @@ function buildUnsupportedPathItem(
     targetFormat,
     status: "failed",
     errorCode,
-    errorMessage: "This conversion path is not available in the current MVP scaffold."
+    errorMessage: "This conversion path is not available in the current MVP scaffold.",
+    errorDetails: null
   };
 }
 
@@ -301,6 +307,15 @@ function createNormalizedError(code: NormalizedErrorCode, message: string, cause
   }
 
   return error;
+}
+
+function buildConversionFailurePatch(error: unknown): ConversionFailurePatch {
+  return {
+    status: "failed",
+    errorCode: "conversion_failed",
+    errorMessage: "Conversion failed.",
+    errorDetails: error instanceof Error ? error.message : String(error)
+  };
 }
 
 function spawnPandoc(args: string[], cwd: string): Promise<void> {

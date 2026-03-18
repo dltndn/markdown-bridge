@@ -22,12 +22,20 @@ function createEnvironmentStatus(): EnvironmentStatus {
   };
 }
 
-function createService(): ConversionService {
+type CreateServiceOptions = {
+  environmentStatus?: EnvironmentStatus;
+  getStatus?: () => Promise<EnvironmentStatus>;
+  executePandoc?: (args: string[], cwd: string) => Promise<void>;
+};
+
+function createService(options: CreateServiceOptions = {}): ConversionService {
+  const getStatus = options.getStatus ?? (async (): Promise<EnvironmentStatus> => options.environmentStatus ?? createEnvironmentStatus());
   return new ConversionService(
     {
-      getStatus: async (): Promise<EnvironmentStatus> => createEnvironmentStatus()
+      getStatus
     },
-    new JobStore()
+    new JobStore(),
+    options.executePandoc
   );
 }
 
@@ -175,6 +183,66 @@ describe("ConversionService.createJob", () => {
     });
   });
 
+  it("marks queued items as pandoc_not_found when the environment reports no pandoc", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
+    const outputDirectory = path.join(tempRoot, "out");
+    const inputPath = path.join(tempRoot, "sample.md");
+    createdDirectories.push(tempRoot);
+    await fs.writeFile(inputPath, "# sample");
+
+    const service = createService({
+      environmentStatus: {
+        ...createEnvironmentStatus(),
+        pandocAvailable: false
+      }
+    });
+
+    const job = await service.createJob({
+      inputPaths: [inputPath],
+      targetFormat: "docx",
+      outputDirectory,
+      collisionPolicy: "rename"
+    });
+
+    const failedItem = await waitForFailedItem(service, job.id);
+    expect(failedItem).toMatchObject({
+      inputPath,
+      status: "failed",
+      errorCode: "pandoc_not_found",
+      errorMessage: "Pandoc is not available on PATH."
+    });
+  });
+
+  it("marks markdown to pdf items as pdf_engine_missing when no PDF engine is available", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
+    const outputDirectory = path.join(tempRoot, "out");
+    const inputPath = path.join(tempRoot, "sample.md");
+    createdDirectories.push(tempRoot);
+    await fs.writeFile(inputPath, "# sample");
+
+    const service = createService({
+      environmentStatus: {
+        ...createEnvironmentStatus(),
+        pdfExportAvailable: false
+      }
+    });
+
+    const job = await service.createJob({
+      inputPaths: [inputPath],
+      targetFormat: "pdf",
+      outputDirectory,
+      collisionPolicy: "rename"
+    });
+
+    const failedItem = await waitForFailedItem(service, job.id);
+    expect(failedItem).toMatchObject({
+      inputPath,
+      status: "failed",
+      errorCode: "pdf_engine_missing",
+      errorMessage: "A PDF engine was not detected for Markdown to PDF export."
+    });
+  });
+
   it("continues processing later queue items when one item throws unexpectedly", async () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
     const outputDirectory = path.join(tempRoot, "out");
@@ -230,6 +298,57 @@ describe("ConversionService.createJob", () => {
       processing: 0,
       success: 0,
       failed: 2,
+      skipped: 0
+    });
+  });
+
+  it("keeps mixed success and failure items isolated within the same batch", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
+    const outputDirectory = path.join(tempRoot, "out");
+    const firstInput = path.join(tempRoot, "first.md");
+    const secondInput = path.join(tempRoot, "second.md");
+    createdDirectories.push(tempRoot);
+    await fs.writeFile(firstInput, "# first");
+    await fs.writeFile(secondInput, "# second");
+
+    const service = createService({
+      executePandoc: async (args) => {
+        if (args[0] === secondInput) {
+          throw new Error("Pandoc failed for second input.");
+        }
+      }
+    });
+
+    const job = await service.createJob({
+      inputPaths: [firstInput, secondInput],
+      targetFormat: "docx",
+      outputDirectory,
+      collisionPolicy: "rename"
+    });
+
+    const settledJob = await waitForJobToSettle(service, job.id, 2);
+    expect(settledJob.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          inputPath: firstInput,
+          status: "success",
+          errorCode: null,
+          errorMessage: null
+        }),
+        expect.objectContaining({
+          inputPath: secondInput,
+          status: "failed",
+          errorCode: "conversion_failed",
+          errorMessage: "Pandoc failed for second input."
+        })
+      ])
+    );
+    expect(settledJob.summary).toMatchObject({
+      total: 2,
+      queued: 0,
+      processing: 0,
+      success: 1,
+      failed: 1,
       skipped: 0
     });
   });

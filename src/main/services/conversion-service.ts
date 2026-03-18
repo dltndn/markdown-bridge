@@ -19,6 +19,8 @@ type QueueEntry = {
   itemId: string;
 };
 
+type ExecutePandoc = (args: string[], cwd: string) => Promise<void>;
+
 type NormalizedErrorCode = "invalid_configuration" | "output_write_failed";
 
 type NormalizedServiceError = Error & {
@@ -33,7 +35,8 @@ export class ConversionService {
 
   constructor(
     private readonly environmentService: EnvironmentService,
-    private readonly jobStore: JobStore
+    private readonly jobStore: JobStore,
+    private readonly executePandoc: ExecutePandoc = spawnPandoc
   ) {}
 
   subscribe(listener: JobListener): () => void {
@@ -207,7 +210,7 @@ export class ConversionService {
 
     try {
       const args = buildPandocArgs(item.inputPath, item.outputPath, item.inputFormat, item.targetFormat);
-      await spawnPandoc(args, path.dirname(item.outputPath));
+      await this.executePandoc(args, path.dirname(item.outputPath));
       this.update(jobId, itemId, { status: "success" });
     } catch (error) {
       this.update(jobId, itemId, {

@@ -4,8 +4,10 @@ import { probeCommand } from "./command";
 const PDF_ENGINES = ["weasyprint", "wkhtmltopdf", "pdflatex", "xelatex", "tectonic"];
 
 export class EnvironmentService {
+  constructor(private readonly runtimePlatform: NodeJS.Platform = process.platform) {}
+
   async getStatus(): Promise<EnvironmentStatus> {
-    const platform = process.platform as PlatformName;
+    const platform = normalizePlatform(this.runtimePlatform);
     const issues: EnvironmentIssue[] = [];
     const pandocProbe = await probeCommand("pandoc");
     const pandocVersion = pandocProbe.output?.split("\n")[0] ?? null;
@@ -53,3 +55,10 @@ export class EnvironmentService {
   }
 }
 
+function normalizePlatform(platform: NodeJS.Platform): PlatformName {
+  if (platform === "darwin" || platform === "win32") {
+    return platform;
+  }
+
+  return "unsupported";
+}

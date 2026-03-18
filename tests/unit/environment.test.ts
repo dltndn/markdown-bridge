@@ -35,7 +35,7 @@ describe("EnvironmentService", () => {
       };
     });
 
-    const status = await new EnvironmentService().getStatus();
+    const status = await new EnvironmentService("darwin").getStatus();
 
     expect(status.pandocAvailable).toBe(true);
     expect(status.pandocVersion).toBe("pandoc 3.7.0");
@@ -59,7 +59,7 @@ describe("EnvironmentService", () => {
       };
     });
 
-    const status = await new EnvironmentService().getStatus();
+    const status = await new EnvironmentService("darwin").getStatus();
 
     expect(status.pandocAvailable).toBe(false);
     expect(status.pandocVersion).toBeNull();
@@ -86,7 +86,7 @@ describe("EnvironmentService", () => {
       };
     });
 
-    const status = await new EnvironmentService().getStatus();
+    const status = await new EnvironmentService("darwin").getStatus();
 
     expect(status.pandocAvailable).toBe(true);
     expect(status.pandocVersion).toBe("pandoc 3.7.0");
@@ -94,6 +94,37 @@ describe("EnvironmentService", () => {
     expect(status.issues).toContainEqual({
       code: "pdf_engine_missing",
       message: "Markdown to PDF export needs a PDF engine such as wkhtmltopdf, WeasyPrint, LaTeX, or Tectonic."
+    });
+  });
+
+  it("normalizes unsupported platforms and surfaces the expected message", async () => {
+    probeCommandMock.mockImplementation(async (command) => {
+      if (command === "pandoc") {
+        return {
+          available: true,
+          output: "pandoc 3.7.0"
+        };
+      }
+
+      if (command === "wkhtmltopdf") {
+        return {
+          available: true,
+          output: "wkhtmltopdf 0.12.6"
+        };
+      }
+
+      return {
+        available: false,
+        output: null
+      };
+    });
+
+    const status = await new EnvironmentService("linux").getStatus();
+
+    expect(status.platform).toBe("unsupported");
+    expect(status.issues).toContainEqual({
+      code: "unsupported_platform",
+      message: "This scaffold currently targets macOS and Windows."
     });
   });
 });

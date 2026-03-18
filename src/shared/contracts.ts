@@ -1,4 +1,4 @@
-export type PlatformName = "darwin" | "win32";
+export type PlatformName = "darwin" | "win32" | "unsupported";
 
 export type ConversionFormat = "md" | "docx" | "pdf";
 
@@ -84,4 +84,3 @@ export type MarkdownBridgeApi = {
   listJobs: () => Promise<ConversionJob[]>;
   onJobUpdated: (listener: (event: JobUpdateEvent) => void) => () => void;
 };
-

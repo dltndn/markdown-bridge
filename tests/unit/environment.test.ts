@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EnvironmentService } from "../../src/main/system/environment";
 import { probeCommand } from "../../src/main/system/command";
+import { PDF_ENGINE_MISSING_MESSAGE } from "../../src/shared/messages";
 
 vi.mock("../../src/main/system/command", () => ({
   probeCommand: vi.fn()
@@ -93,7 +94,7 @@ describe("EnvironmentService", () => {
     expect(status.pdfExportAvailable).toBe(false);
     expect(status.issues).toContainEqual({
       code: "pdf_engine_missing",
-      message: "Markdown to PDF export needs a PDF engine such as wkhtmltopdf, WeasyPrint, LaTeX, or Tectonic."
+      message: PDF_ENGINE_MISSING_MESSAGE
     });
   });
 

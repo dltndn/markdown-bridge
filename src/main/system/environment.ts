@@ -1,4 +1,5 @@
 import type { EnvironmentIssue, EnvironmentStatus, PlatformName } from "../../shared/contracts";
+import { PDF_ENGINE_MISSING_MESSAGE } from "../../shared/messages";
 import { probeCommand } from "./command";
 
 const PDF_ENGINES = ["weasyprint", "wkhtmltopdf", "pdflatex", "xelatex", "tectonic"];
@@ -23,7 +24,7 @@ export class EnvironmentService {
     if (pandocProbe.available && !pdfEngineAvailable) {
       issues.push({
         code: "pdf_engine_missing",
-        message: "Markdown to PDF export needs a PDF engine such as wkhtmltopdf, WeasyPrint, LaTeX, or Tectonic."
+        message: PDF_ENGINE_MISSING_MESSAGE
       });
     }
 

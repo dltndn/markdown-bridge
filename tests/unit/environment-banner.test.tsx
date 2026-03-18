@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { EnvironmentBanner } from "../../src/renderer/features/environment/EnvironmentBanner";
 import type { EnvironmentStatus } from "../../src/shared/contracts";
+import { PDF_ENGINE_MISSING_MESSAGE } from "../../src/shared/messages";
 
 function renderBanner(status: EnvironmentStatus | null): string {
   return renderToStaticMarkup(<EnvironmentBanner status={status} />);
@@ -40,7 +41,7 @@ describe("EnvironmentBanner", () => {
         },
         {
           code: "pdf_engine_missing",
-          message: "Markdown to PDF export needs a PDF engine such as wkhtmltopdf, WeasyPrint, LaTeX, or Tectonic."
+          message: PDF_ENGINE_MISSING_MESSAGE
         },
         {
           code: "unsupported_platform",
@@ -51,7 +52,7 @@ describe("EnvironmentBanner", () => {
 
     expect(markup).toContain("Setup required.");
     expect(markup).toContain("Pandoc was not found on PATH. Install Pandoc before creating conversion jobs.");
-    expect(markup).toContain("Markdown to PDF export needs a PDF engine such as wkhtmltopdf, WeasyPrint, LaTeX, or Tectonic.");
+    expect(markup).toContain(PDF_ENGINE_MISSING_MESSAGE);
     expect(markup).toContain("This scaffold currently targets macOS and Windows.");
   });
 });

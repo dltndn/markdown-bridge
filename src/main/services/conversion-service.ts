@@ -5,6 +5,7 @@ import type { ConversionFormat, ConversionJob, ConversionRequest, JobItem, JobUp
 import type { EnvironmentService } from "../system/environment";
 import { buildPandocArgs } from "./command-builder";
 import type { JobStore } from "./job-store";
+import { PDF_ENGINE_MISSING_MESSAGE } from "../../shared/messages";
 import {
   ensureDirectoryExists,
   getFormatFromPath,
@@ -207,7 +208,7 @@ export class ConversionService {
       this.update(jobId, itemId, {
         status: "failed",
         errorCode: "pdf_engine_missing",
-        errorMessage: "A PDF engine was not detected for Markdown to PDF export.",
+        errorMessage: PDF_ENGINE_MISSING_MESSAGE,
         errorDetails: null
       });
       return;

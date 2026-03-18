@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { EnvironmentStatus } from "../../src/shared/contracts";
+import { PDF_ENGINE_MISSING_MESSAGE } from "../../src/shared/messages";
 import { ConversionService } from "../../src/main/services/conversion-service";
 import { JobStore } from "../../src/main/services/job-store";
 
@@ -239,7 +240,7 @@ describe("ConversionService.createJob", () => {
       inputPath,
       status: "failed",
       errorCode: "pdf_engine_missing",
-      errorMessage: "A PDF engine was not detected for Markdown to PDF export."
+      errorMessage: PDF_ENGINE_MISSING_MESSAGE
     });
   });
 

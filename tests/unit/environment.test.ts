@@ -40,13 +40,23 @@ describe("EnvironmentService", () => {
     expect(status.pandocAvailable).toBe(true);
     expect(status.pandocVersion).toBe("pandoc 3.7.0");
     expect(status.pdfExportAvailable).toBe(true);
-    expect(status.issues).toEqual([]);
+    expect(status.issues.find((issue) => issue.code === "pandoc_not_found")).toBeUndefined();
+    expect(status.issues.find((issue) => issue.code === "pdf_engine_missing")).toBeUndefined();
   });
 
-  it("reports missing pandoc without surfacing a PDF engine issue", async () => {
-    probeCommandMock.mockResolvedValue({
-      available: false,
-      output: null
+  it("keeps PDF export unavailable when pandoc is missing even if a PDF engine exists", async () => {
+    probeCommandMock.mockImplementation(async (command) => {
+      if (command === "wkhtmltopdf") {
+        return {
+          available: true,
+          output: "wkhtmltopdf 0.12.6"
+        };
+      }
+
+      return {
+        available: false,
+        output: null
+      };
     });
 
     const status = await new EnvironmentService().getStatus();

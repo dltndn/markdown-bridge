@@ -83,4 +83,12 @@ describe("preload subscription bridge", () => {
     expect(electronMocks.ipcRenderer.removeListener).toHaveBeenCalledWith("conversion:subscribe", subscription);
     expect(electronMocks.getSubscribedListener()).toBeNull();
   });
+
+  it("invokes dialog:openOutputFolder with the provided path", async () => {
+    const api = electronMocks.getExposedApi() as MarkdownBridgeApi;
+
+    await api.openOutputFolder("/tmp/output/sample.pdf");
+
+    expect(electronMocks.ipcRenderer.invoke).toHaveBeenCalledWith("dialog:openOutputFolder", "/tmp/output/sample.pdf");
+  });
 });

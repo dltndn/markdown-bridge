@@ -1,6 +1,7 @@
-import { dialog, ipcMain } from "electron";
+import { dialog, ipcMain, shell } from "electron";
 import type { BrowserWindow } from "electron";
 import type { ConversionRequest, JobUpdateEvent } from "../../shared/contracts";
+import path from "node:path";
 import { getConversionCapabilities } from "../services/capabilities";
 import { ConversionService } from "../services/conversion-service";
 import { JobStore } from "../services/job-store";
@@ -27,6 +28,12 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): ConversionServic
     });
 
     return result.canceled ? null : (result.filePaths[0] ?? null);
+  });
+  registerHandle("dialog:openOutputFolder", async (_event, outputPath: string) => {
+    const result = await shell.openPath(path.dirname(outputPath));
+    if (result) {
+      throw new Error(result);
+    }
   });
   registerHandle("conversion:getCapabilities", async () => getConversionCapabilities());
   registerHandle("conversion:createJob", async (_event, request: ConversionRequest) => conversionService.createJob(request));

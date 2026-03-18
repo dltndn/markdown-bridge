@@ -2,9 +2,10 @@ import type { ConversionJob } from "../../../shared/contracts";
 
 type JobsPanelProps = {
   jobs: ConversionJob[];
+  onOpenOutputFolder: (outputPath: string) => void | Promise<void>;
 };
 
-export function JobsPanel({ jobs }: JobsPanelProps) {
+export function JobsPanel({ jobs, onOpenOutputFolder }: JobsPanelProps) {
   if (jobs.length === 0) {
     return <p className="empty-state">No jobs yet. Create a conversion batch to see status here.</p>;
   }
@@ -20,7 +21,23 @@ export function JobsPanel({ jobs }: JobsPanelProps) {
                 {job.summary.success} success / {job.summary.failed} failed / {job.summary.skipped} skipped
               </p>
             </div>
-            <span className="job-pill">{job.summary.total} items</span>
+            <div className="job-card__header-actions">
+              <span className="job-pill">{job.summary.total} items</span>
+              {job.items.some((item) => item.outputPath) ? (
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={() => {
+                    const outputPath = job.items.find((item) => item.outputPath)?.outputPath;
+                    if (outputPath) {
+                      void onOpenOutputFolder(outputPath);
+                    }
+                  }}
+                >
+                  Open output folder
+                </button>
+              ) : null}
+            </div>
           </header>
 
           <div className="job-items">
@@ -44,4 +61,3 @@ export function JobsPanel({ jobs }: JobsPanelProps) {
     </div>
   );
 }
-

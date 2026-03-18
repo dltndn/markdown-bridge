@@ -14,13 +14,17 @@ const electronMocks = vi.hoisted(() => {
     removeHandler: vi.fn((channel: string) => {
       handlers.delete(channel);
     }),
-    showOpenDialog: vi.fn()
+    showOpenDialog: vi.fn(),
+    openPath: vi.fn()
   };
 });
 
 vi.mock("electron", () => ({
   dialog: {
     showOpenDialog: electronMocks.showOpenDialog
+  },
+  shell: {
+    openPath: electronMocks.openPath
   },
   ipcMain: {
     handle: electronMocks.handle,
@@ -62,6 +66,7 @@ describe("registerIpcHandlers", () => {
         "app:getEnvironmentStatus",
         "dialog:pickFiles",
         "dialog:pickOutputDirectory",
+        "dialog:openOutputFolder",
         "conversion:getCapabilities",
         "conversion:createJob",
         "conversion:getJob",
@@ -123,5 +128,8 @@ describe("registerIpcHandlers", () => {
         })
       })
     );
+
+    await invokeRegisteredHandler("dialog:openOutputFolder", "/tmp/out/sample.pdf");
+    expect(electronMocks.openPath).toHaveBeenCalledWith("/tmp/out");
   });
 });

@@ -62,10 +62,9 @@ export function App() {
         </SectionCard>
 
         <SectionCard title="Job Results" description="Queue state is managed in the Electron main process and streamed back to the renderer.">
-          <JobsPanel jobs={jobs} />
+          <JobsPanel jobs={jobs} onOpenOutputFolder={window.markdownBridge.openOutputFolder} />
         </SectionCard>
       </div>
     </main>
   );
 }
-

@@ -418,10 +418,15 @@
 - [x] 6.2 로그에 문서 본문이 남지 않도록 안전 기준을 명시한다.
   - 작업 기록:
     - commit message: fix: redact document body fields from logs
-    - commit hash: TBD
-    - 확인자: Codex
-    - 피드백: `src/main/logging.ts`에 재귀적 log sanitizer를 추가해 `body`, `content`, `documentBody`, `documentContent`, `markdown`, `rawContent`, `rawText`, `extractedText` 키를 `[redacted]`로 마스킹하도록 보강했다. 스펙 16에는 summary metadata만 기록하고 사용자 작성 텍스트는 logger 호출 전에 요약하라는 기준을 명시했다.
-    - 검증: `npx vitest run --root . tests/unit/main-logger.test.ts tests/unit/environment.test.ts tests/unit/conversion-service.test.ts`, `npm run typecheck`, `npx eslint src/main/logging.ts tests/unit/main-logger.test.ts`
+    - commit hash: 4bebcec
+    - 확인자: Archimedes (subagent 019d0010-4cee-7cf2-b03e-e3374826f803)
+    - 피드백: `src/main/logging.ts`에 재귀적 log sanitizer를 추가해 `body`, `content`, `documentBody`, `documentContent`, `markdown`, `rawContent`, `rawText`, `extractedText` 키를 `[redacted]`로 마스킹하도록 보강했다. `tests/unit/main-logger.test.ts`에는 중첩 payload와 배열 안의 문서 본문 유사 필드가 sink/console로 전달되기 전에 치환되는 회귀 테스트를 추가했고, 스펙 16에는 summary metadata만 기록하고 사용자 작성 텍스트는 logger 호출 전에 요약하라는 기준을 명시했다.
+    - 검증: verification subagent `Archimedes`가 `npx vitest run --root . tests/unit/main-logger.test.ts`, `npm run typecheck`, `npx eslint src/main/logging.ts tests/unit/main-logger.test.ts`를 실행해 모두 통과함을 확인했다.
+    - 추가 피드백 반영:
+      - commit message: docs: add logging safety standard note
+      - commit hash: 84edc8c
+      - 반영 내용: `documents/logging-safety-standard.md`를 추가해 허용 로그 항목, 금지 필드, 요약 우선 원칙을 별도 운영 문서로 정리했다.
+      - 검증: 문서 내용이 스펙 16 및 `src/main/logging.ts`의 redaction 키 집합과 일치하는지 확인했다.
     - 다음 작업: 6.3
     - 참고 스펙: 16. Logging and Diagnostics, 17. Testing Strategy
 - [ ] 6.3 `macOS` 수동 검증 시나리오를 체크리스트로 작성한다.

@@ -23,8 +23,19 @@ Task 6.4 scope: validate the Windows end-to-end flow with the current MVP scaffo
 - [ ] Quit the app by closing the last window and confirm Windows app behavior matches the Electron default for the platform.
 - [ ] Reopen the app from the taskbar or Start menu and confirm the window can be restored without stale job state in the UI.
 
+## Failure And Gating Checks
+
+Task 6.5 scope: validate the blocked and degraded cases on Windows.
+
+- [ ] Disable or remove `Pandoc` from `PATH`, relaunch the app, and confirm the environment banner reports `Pandoc` as missing.
+- [ ] Keep `Pandoc` installed, remove every usable PDF engine, and confirm `MD -> PDF` is reported as unavailable.
+- [ ] Use a mixed batch with a supported file and an unsupported file, then confirm the batch shows one failure and one success without stopping the supported item.
+- [ ] Attempt `PDF -> MD` when the experimental path is unavailable and confirm the UI presents the gating message instead of offering a normal conversion flow.
+- [ ] Confirm the failure and gating states do not expose raw document contents in the UI or logs during the flow.
+
 ## Expected Evidence
 
 - Successful output files for each supported conversion path
 - File Explorer opens the intended output directory
 - No unexpected crash dialog or blocked UI state during the flow
+- Missing dependency and experimental-path messages are shown for blocked cases

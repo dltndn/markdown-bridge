@@ -212,6 +212,11 @@ select {
   word-break: break-word;
 }
 
+.form-warning {
+  margin: 0 0 14px;
+  color: var(--warning);
+}
+
 .jobs-panel {
   display: grid;
   gap: 16px;

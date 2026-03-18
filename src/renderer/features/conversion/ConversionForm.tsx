@@ -10,6 +10,10 @@ type ConversionFormProps = {
   onSubmit: (request: ConversionRequest) => Promise<void>;
 };
 
+function blocksPdfToMarkdown(selectedFiles: string[], targetFormat: ConversionFormat): boolean {
+  return targetFormat === "md" && selectedFiles.some((filePath) => filePath.toLowerCase().endsWith(".pdf"));
+}
+
 export function ConversionForm({
   selectedFiles,
   onFilesChange,
@@ -20,6 +24,7 @@ export function ConversionForm({
   const [targetFormat, setTargetFormat] = useState<ConversionFormat>("md");
   const [collisionPolicy, setCollisionPolicy] = useState<CollisionPolicy>("rename");
   const [submitting, setSubmitting] = useState(false);
+  const blockedByUnsupportedCombination = blocksPdfToMarkdown(selectedFiles, targetFormat);
   const supportedHint = useMemo(
     // This hint is static today. If the form becomes capability-driven, cover the
     // IPC-to-renderer wiring with a test instead of relying on copy-only regressions.
@@ -121,7 +126,16 @@ export function ConversionForm({
         </div>
       </div>
 
-      <button type="button" className="button-primary" disabled={submitting || selectedFiles.length === 0 || !outputDirectory} onClick={handleSubmit}>
+      {blockedByUnsupportedCombination ? (
+        <p className="muted form-warning">PDF to MD submissions are blocked in this scaffold.</p>
+      ) : null}
+
+      <button
+        type="button"
+        className="button-primary"
+        disabled={submitting || selectedFiles.length === 0 || !outputDirectory || blockedByUnsupportedCombination}
+        onClick={handleSubmit}
+      >
         {submitting ? "Creating job..." : "Start conversion"}
       </button>
     </div>

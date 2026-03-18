@@ -41,4 +41,43 @@ describe("JobsPanel", () => {
     expect(markup).toContain("Open output folder");
     expect(markup).toContain("Job job-1");
   });
+
+  it("renders failed item messages", () => {
+    const markup = renderToStaticMarkup(
+      <JobsPanel
+        jobs={[
+          {
+            id: "job-2",
+            items: [
+              {
+                id: "item-2",
+                inputPath: "/tmp/sample.md",
+                inputFormat: "md",
+                outputPath: null,
+                targetFormat: "pdf",
+                status: "failed",
+                errorCode: "conversion_failed",
+                errorMessage: "Conversion failed.",
+                errorDetails: "Pandoc exited with code 1",
+                createdAt: "2026-03-18T00:00:00.000Z",
+                updatedAt: "2026-03-18T00:00:00.000Z"
+              }
+            ],
+            summary: {
+              total: 1,
+              queued: 0,
+              processing: 0,
+              success: 0,
+              failed: 1,
+              skipped: 0
+            }
+          }
+        ]}
+        onOpenOutputFolder={vi.fn()}
+      />
+    );
+
+    expect(markup).toContain("Conversion failed.");
+    expect(markup).toContain("failed");
+  });
 });

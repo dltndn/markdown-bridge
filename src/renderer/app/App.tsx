@@ -5,6 +5,7 @@ import { ConversionForm } from "../features/conversion/ConversionForm";
 import { EnvironmentBanner } from "../features/environment/EnvironmentBanner";
 import { JobsPanel } from "../features/jobs/JobsPanel";
 import { useJobSubscription } from "../hooks/useJobSubscription";
+import { mergeJobUpdate, upsertJob } from "./job-state";
 
 export function App() {
   const [environment, setEnvironment] = useState<EnvironmentStatus | null>(null);
@@ -23,19 +24,12 @@ export function App() {
   }, []);
 
   useJobSubscription((event) => {
-    setJobs((currentJobs) => {
-      const existing = currentJobs.find((job) => job.id === event.job.id);
-      if (!existing) {
-        return [event.job, ...currentJobs];
-      }
-
-      return currentJobs.map((job) => (job.id === event.job.id ? event.job : job));
-    });
+    setJobs((currentJobs) => mergeJobUpdate(currentJobs, event));
   });
 
   const handleCreateJob = async (request: ConversionRequest) => {
     const job = await window.markdownBridge.createJob(request);
-    setJobs((currentJobs) => [job, ...currentJobs.filter((existing) => existing.id !== job.id)]);
+    setJobs((currentJobs) => upsertJob(currentJobs, job));
   };
 
   return (

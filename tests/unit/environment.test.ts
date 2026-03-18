@@ -14,6 +14,54 @@ describe("EnvironmentService", () => {
     probeCommandMock.mockReset();
   });
 
+  it("emits a structured environment status log with issue codes", async () => {
+    probeCommandMock.mockImplementation(async (command) => {
+      if (command === "pandoc") {
+        return {
+          available: true,
+          output: "pandoc 3.7.0"
+        };
+      }
+
+      return {
+        available: false,
+        output: null
+      };
+    });
+
+    const entries: Array<Record<string, unknown>> = [];
+    const logger = {
+      debug: vi.fn(),
+      info: vi.fn((event: string, details?: Record<string, unknown>) => {
+        entries.push({
+          level: "info",
+          event,
+          details
+        });
+      }),
+      warn: vi.fn(),
+      error: vi.fn()
+    };
+
+    const status = await new EnvironmentService("darwin", logger).getStatus();
+
+    expect(status.issues).toContainEqual({
+      code: "pdf_engine_missing",
+      message: PDF_ENGINE_MISSING_MESSAGE
+    });
+    expect(entries).toContainEqual({
+      level: "info",
+      event: "environment:checked",
+      details: {
+        pandocAvailable: true,
+        pandocVersion: "pandoc 3.7.0",
+        pdfExportAvailable: false,
+        platform: "darwin",
+        issueCodes: ["pdf_engine_missing"]
+      }
+    });
+  });
+
   it("reports pandoc and PDF export as available when a PDF engine is detected", async () => {
     probeCommandMock.mockImplementation(async (command) => {
       if (command === "pandoc") {

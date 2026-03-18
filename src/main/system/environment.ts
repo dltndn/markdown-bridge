@@ -1,11 +1,15 @@
 import type { EnvironmentIssue, EnvironmentStatus, PlatformName } from "../../shared/contracts";
 import { PDF_ENGINE_MISSING_MESSAGE } from "../../shared/messages";
+import { noopMainLogger, type MainLogger } from "../logging";
 import { probeCommand } from "./command";
 
 const PDF_ENGINES = ["weasyprint", "wkhtmltopdf", "pdflatex", "xelatex", "tectonic"];
 
 export class EnvironmentService {
-  constructor(private readonly runtimePlatform: NodeJS.Platform = process.platform) {}
+  constructor(
+    private readonly runtimePlatform: NodeJS.Platform = process.platform,
+    private readonly logger: MainLogger = noopMainLogger
+  ) {}
 
   async getStatus(): Promise<EnvironmentStatus> {
     const platform = normalizePlatform(this.runtimePlatform);
@@ -35,13 +39,23 @@ export class EnvironmentService {
       });
     }
 
-    return {
+    const status = {
       pandocAvailable: pandocProbe.available,
       pandocVersion,
       pdfExportAvailable: pandocProbe.available && pdfEngineAvailable,
       platform,
       issues
     };
+
+    this.logger.info("environment:checked", {
+      pandocAvailable: pandocProbe.available,
+      pandocVersion,
+      pdfExportAvailable: pandocProbe.available && pdfEngineAvailable,
+      platform,
+      issueCodes: issues.map((issue) => issue.code)
+    });
+
+    return status;
   }
 
   private async detectPdfEngine(): Promise<boolean> {

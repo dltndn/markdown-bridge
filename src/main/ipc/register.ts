@@ -2,14 +2,15 @@ import { dialog, ipcMain, shell } from "electron";
 import type { BrowserWindow } from "electron";
 import type { ConversionRequest, JobUpdateEvent } from "../../shared/contracts";
 import path from "node:path";
+import { noopMainLogger, type MainLogger } from "../logging";
 import { getConversionCapabilities } from "../services/capabilities";
 import { ConversionService } from "../services/conversion-service";
 import { JobStore } from "../services/job-store";
 import { EnvironmentService } from "../system/environment";
 
-export function registerIpcHandlers(mainWindow: BrowserWindow): ConversionService {
-  const environmentService = new EnvironmentService();
-  const conversionService = new ConversionService(environmentService, new JobStore());
+export function registerIpcHandlers(mainWindow: BrowserWindow, logger: MainLogger = noopMainLogger): ConversionService {
+  const environmentService = new EnvironmentService(process.platform, logger);
+  const conversionService = new ConversionService(environmentService, new JobStore(), undefined, logger);
 
   registerHandle("app:getEnvironmentStatus", async () => environmentService.getStatus());
   registerHandle("dialog:pickFiles", async () => {

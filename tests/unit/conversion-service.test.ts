@@ -6,6 +6,7 @@ import type { EnvironmentStatus } from "../../src/shared/contracts";
 import { PDF_ENGINE_MISSING_MESSAGE } from "../../src/shared/messages";
 import { ConversionService } from "../../src/main/services/conversion-service";
 import { JobStore } from "../../src/main/services/job-store";
+import type { MainLogger } from "../../src/main/logging";
 
 const createdDirectories: string[] = [];
 
@@ -27,6 +28,7 @@ type CreateServiceOptions = {
   environmentStatus?: EnvironmentStatus;
   getStatus?: () => Promise<EnvironmentStatus>;
   executePandoc?: (args: string[], cwd: string) => Promise<void>;
+  logger?: MainLogger;
 };
 
 function createService(options: CreateServiceOptions = {}): ConversionService {
@@ -36,8 +38,29 @@ function createService(options: CreateServiceOptions = {}): ConversionService {
       getStatus
     },
     new JobStore(),
-    options.executePandoc
+    options.executePandoc,
+    options.logger
   );
+}
+
+function createLoggerCapture() {
+  const entries: Array<Record<string, unknown>> = [];
+  const logger: MainLogger = {
+    debug: (event, details) => {
+      entries.push({ level: "debug", event, details });
+    },
+    info: (event, details) => {
+      entries.push({ level: "info", event, details });
+    },
+    warn: (event, details) => {
+      entries.push({ level: "warn", event, details });
+    },
+    error: (event, details) => {
+      entries.push({ level: "error", event, details });
+    }
+  };
+
+  return { entries, logger };
 }
 
 async function waitForFailedItem(service: ConversionService, jobId: string): Promise<NonNullable<ReturnType<ConversionService["getJob"]>>["items"][number]> {
@@ -241,6 +264,112 @@ describe("ConversionService.createJob", () => {
       status: "failed",
       errorCode: "pdf_engine_missing",
       errorMessage: PDF_ENGINE_MISSING_MESSAGE
+    });
+  });
+
+  it("emits lifecycle logs for job creation and completion", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
+    const outputDirectory = path.join(tempRoot, "out");
+    const inputPath = path.join(tempRoot, "sample.md");
+    createdDirectories.push(tempRoot);
+    await fs.writeFile(inputPath, "# sample");
+
+    const { entries, logger } = createLoggerCapture();
+    const service = createService({
+      logger,
+      executePandoc: async () => undefined
+    });
+
+    const job = await service.createJob({
+      inputPaths: [inputPath],
+      targetFormat: "docx",
+      outputDirectory,
+      collisionPolicy: "rename"
+    });
+
+    const settledJob = await waitForJobToSettle(service, job.id, 1);
+    expect(settledJob.summary).toMatchObject({
+      total: 1,
+      queued: 0,
+      processing: 0,
+      success: 1,
+      failed: 0,
+      skipped: 0
+    });
+    expect(entries).toContainEqual({
+      level: "info",
+      event: "job:created",
+      details: {
+        jobId: job.id,
+        targetFormat: "docx",
+        inputCount: 1,
+        queuedCount: 1,
+        failedCount: 0,
+        skippedCount: 0
+      }
+    });
+    expect(entries).toContainEqual({
+      level: "info",
+      event: "job:completed",
+      details: {
+        jobId: job.id,
+        summary: settledJob.summary,
+        failedErrorCodes: []
+      }
+    });
+  });
+
+  it("logs normalized error categories and Pandoc exit codes when execution fails", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
+    const outputDirectory = path.join(tempRoot, "out");
+    const inputPath = path.join(tempRoot, "sample.md");
+    createdDirectories.push(tempRoot);
+    await fs.writeFile(inputPath, "# sample");
+
+    const { entries, logger } = createLoggerCapture();
+    const service = createService({
+      logger,
+      executePandoc: async () => {
+        const error = new Error("Pandoc exited with code 2") as Error & { exitCode?: number };
+        error.exitCode = 2;
+        throw error;
+      }
+    });
+
+    const job = await service.createJob({
+      inputPaths: [inputPath],
+      targetFormat: "docx",
+      outputDirectory,
+      collisionPolicy: "rename"
+    });
+
+    const failedItem = await waitForFailedItem(service, job.id);
+    expect(failedItem).toMatchObject({
+      inputPath,
+      status: "failed",
+      errorCode: "conversion_failed",
+      errorMessage: "Conversion failed.",
+      errorDetails: "Pandoc exited with code 2"
+    });
+    expect(entries).toContainEqual({
+      level: "error",
+      event: "pandoc:execution_failed",
+      details: {
+        jobId: job.id,
+        itemId: failedItem.id,
+        errorCode: "conversion_failed",
+        processExitCode: 2
+      }
+    });
+    expect(entries).toContainEqual({
+      level: "warn",
+      event: "job:item_failed",
+      details: {
+        jobId: job.id,
+        itemId: failedItem.id,
+        errorCode: "conversion_failed",
+        errorDetailsPresent: true
+      }
     });
   });
 

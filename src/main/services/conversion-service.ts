@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { ConversionFormat, ConversionJob, ConversionRequest, JobItem, JobUpdateEvent } from "../../shared/contracts";
+import { noopMainLogger, type MainLogger } from "../logging";
 import type { EnvironmentService } from "../system/environment";
 import { buildPandocArgs } from "./command-builder";
 import type { JobStore } from "./job-store";
@@ -33,12 +34,14 @@ type NormalizedServiceError = Error & {
 export class ConversionService {
   private readonly queue: QueueEntry[] = [];
   private readonly listeners = new Set<JobListener>();
+  private readonly completedJobs = new Set<string>();
   private processing = false;
 
   constructor(
     private readonly environmentService: EnvironmentService,
     private readonly jobStore: JobStore,
-    private readonly executePandoc: ExecutePandoc = spawnPandoc
+    private readonly executePandoc: ExecutePandoc = spawnPandoc,
+    private readonly logger: MainLogger = noopMainLogger
   ) {}
 
   subscribe(listener: JobListener): () => void {
@@ -121,6 +124,14 @@ export class ConversionService {
     );
 
     const job = this.jobStore.create(finalizedItems);
+    this.logger.info("job:created", {
+      jobId: job.id,
+      targetFormat: request.targetFormat,
+      inputCount: request.inputPaths.length,
+      queuedCount: job.summary.queued,
+      failedCount: job.summary.failed,
+      skippedCount: job.summary.skipped
+    });
 
     for (const item of job.items) {
       if (item.status === "queued") {
@@ -129,6 +140,7 @@ export class ConversionService {
     }
 
     this.emit({ job });
+    this.logCompletedJobIfNeeded(job);
     void this.processQueue();
     return job;
   }
@@ -221,6 +233,12 @@ export class ConversionService {
       await this.executePandoc(args, path.dirname(item.outputPath));
       this.update(jobId, itemId, { status: "success" });
     } catch (error) {
+      this.logger.error("pandoc:execution_failed", {
+        jobId,
+        itemId,
+        errorCode: "conversion_failed",
+        processExitCode: extractProcessExitCode(error)
+      });
       this.update(jobId, itemId, buildConversionFailurePatch(error));
     }
   }
@@ -228,6 +246,16 @@ export class ConversionService {
   private update(jobId: string, itemId: string, patch: Partial<JobItem>): void {
     const job = this.jobStore.updateItem(jobId, itemId, patch);
     this.emit({ job, itemId });
+    if (patch.status === "failed") {
+      this.logger.warn("job:item_failed", {
+        jobId,
+        itemId,
+        errorCode: patch.errorCode ?? null,
+        errorDetailsPresent: patch.errorDetails !== null && patch.errorDetails !== undefined
+      });
+    }
+
+    this.logCompletedJobIfNeeded(job);
   }
 
   private failUnexpectedItem(jobId: string, itemId: string, error: unknown): void {
@@ -250,6 +278,19 @@ export class ConversionService {
     for (const listener of this.listeners) {
       listener(event);
     }
+  }
+
+  private logCompletedJobIfNeeded(job: ConversionJob): void {
+    if (this.completedJobs.has(job.id) || job.items.some((item) => item.status === "queued" || item.status === "processing" || item.status === "validating")) {
+      return;
+    }
+
+    this.completedJobs.add(job.id);
+    this.logger.info("job:completed", {
+      jobId: job.id,
+      summary: job.summary,
+      failedErrorCodes: job.items.filter((item) => item.status === "failed").map((item) => item.errorCode).filter((code): code is string => code !== null)
+    });
   }
 }
 
@@ -319,6 +360,15 @@ function buildConversionFailurePatch(error: unknown): ConversionFailurePatch {
   };
 }
 
+function extractProcessExitCode(error: unknown): number | null {
+  if (typeof error !== "object" || error === null) {
+    return null;
+  }
+
+  const maybeExitCode = (error as { exitCode?: unknown }).exitCode;
+  return typeof maybeExitCode === "number" ? maybeExitCode : null;
+}
+
 function spawnPandoc(args: string[], cwd: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn("pandoc", args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
@@ -336,7 +386,11 @@ function spawnPandoc(args: string[], cwd: string): Promise<void> {
         return;
       }
 
-      reject(new Error(stderr.trim() || `Pandoc exited with code ${code}`));
+      const error = new Error(stderr.trim() || `Pandoc exited with code ${code}`) as Error & {
+        exitCode?: number | null;
+      };
+      error.exitCode = code ?? null;
+      reject(error);
     });
   });
 }

@@ -1,19 +1,25 @@
-# PDF to MD Gating Risk
+# PDF to MD MVP Decision
 
-Current coverage for task 3.9 locks two artifacts:
+Status: Accepted for MVP
 
-- `getConversionCapabilities()` keeps `experimentalPdfImport` as `false`
+## Context
+
+The current repository already treats `PDF -> MD` as an experimental path only:
+
+- `getConversionCapabilities()` keeps `experimentalPdfImport` set to `false`
+- `supportedPaths` excludes `pdf->md`
 - the renderer copy says `PDF -> MD` remains disabled in this scaffold
 
-Residual risk remains if the UI later becomes capability-driven at runtime.
-In that case, a future regression could appear in the wiring between:
+That means the app can describe the path, but it should not present it as a normal supported workflow in the MVP.
 
-- main-process capability export
-- IPC delivery to preload and renderer
-- renderer logic that decides whether `PDF -> MD` is shown or enabled
+## Decision
 
-The current tests do not exercise that end-to-end path. If the form stops using static copy and starts consuming `supportedPaths` or `experimentalPdfImport` dynamically, add an integration-style test that verifies:
+Keep `PDF -> MD` out of the MVP release scope.
 
-- `pdf->md` is absent from the effective renderer capabilities
-- the UI does not expose `PDF -> MD` as a selectable path
-- mismatches between main-process capability data and renderer presentation fail fast
+Retain gating and limitation messaging only. Do not add a normal conversion path, selector, or release claim for `PDF -> MD` until a non-fragile extraction flow has been validated and explicitly approved.
+
+## Consequences
+
+- The current gating tests and renderer copy remain the source of truth.
+- The app avoids promising a path that has not been prototyped end to end.
+- Any future enablement will need a separate decision and an integration test that proves the renderer and main-process capability data stay aligned.

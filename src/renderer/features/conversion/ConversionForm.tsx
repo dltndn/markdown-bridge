@@ -95,7 +95,25 @@ export function ConversionForm({
       <div className="selection-panel">
         <div>
           <h3>Selected files</h3>
-          <p>{selectedFiles.length === 0 ? "No files selected yet." : `${selectedFiles.length} file(s) queued for submission.`}</p>
+          {selectedFiles.length === 0 ? (
+            <p>No files selected yet.</p>
+          ) : (
+            <>
+              <p>{selectedFiles.length} file(s) queued for submission.</p>
+              <ul className="selected-files-list">
+                {selectedFiles.map((filePath) => {
+                  const fileName = filePath.split(/[\\/]/).pop() ?? filePath;
+
+                  return (
+                    <li key={filePath}>
+                      <strong>{fileName}</strong>
+                      <span>{filePath}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
         </div>
         <div>
           <h3>Output directory</h3>

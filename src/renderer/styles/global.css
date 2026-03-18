@@ -190,6 +190,28 @@ select {
   padding: 16px;
 }
 
+.selected-files-list {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.selected-files-list li {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(31, 36, 48, 0.04);
+}
+
+.selected-files-list span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  word-break: break-word;
+}
+
 .jobs-panel {
   display: grid;
   gap: 16px;
@@ -205,6 +227,12 @@ select {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+
+.job-card__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .job-pill {
@@ -251,4 +279,3 @@ select {
     grid-template-columns: 1fr;
   }
 }
-

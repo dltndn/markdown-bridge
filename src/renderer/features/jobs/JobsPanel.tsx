@@ -17,9 +17,32 @@ export function JobsPanel({ jobs, onOpenOutputFolder }: JobsPanelProps) {
           <header className="job-card__header">
             <div>
               <h3>Job {job.id.slice(0, 8)}</h3>
-              <p>
-                {job.summary.success} success / {job.summary.failed} failed / {job.summary.skipped} skipped
-              </p>
+              <ul className="job-summary-list">
+                <li>
+                  <strong>{job.summary.total}</strong>
+                  <span>total</span>
+                </li>
+                <li>
+                  <strong>{job.summary.queued}</strong>
+                  <span>queued</span>
+                </li>
+                <li>
+                  <strong>{job.summary.processing}</strong>
+                  <span>processing</span>
+                </li>
+                <li>
+                  <strong>{job.summary.success}</strong>
+                  <span>success</span>
+                </li>
+                <li>
+                  <strong>{job.summary.failed}</strong>
+                  <span>failed</span>
+                </li>
+                <li>
+                  <strong>{job.summary.skipped}</strong>
+                  <span>skipped</span>
+                </li>
+              </ul>
             </div>
             <div className="job-card__header-actions">
               <span className="job-pill">{job.summary.total} items</span>
@@ -52,6 +75,7 @@ export function JobsPanel({ jobs, onOpenOutputFolder }: JobsPanelProps) {
                 <div className="job-item__meta">
                   <span>{item.status}</span>
                   {item.errorMessage ? <small>{item.errorMessage}</small> : null}
+                  {item.errorDetails ? <small className="job-item__details">Details: {item.errorDetails}</small> : null}
                 </div>
               </div>
             ))}

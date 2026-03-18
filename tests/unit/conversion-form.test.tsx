@@ -17,6 +17,21 @@ describe("ConversionForm", () => {
     expect(markup).toContain("PDF -&gt; MD remains disabled in this scaffold.");
   });
 
+  it("states that file picker only is in scope for MVP intake", () => {
+    const markup = renderToStaticMarkup(
+      <ConversionForm
+        selectedFiles={[]}
+        onFilesChange={() => undefined}
+        outputDirectory=""
+        onOutputDirectoryChange={() => undefined}
+        onSubmit={async () => undefined}
+      />
+    );
+
+    expect(markup).toContain("MVP file intake uses the file picker only.");
+    expect(markup).toContain("Drag-and-drop, drag-in folders, and file watching stay out of scope for now.");
+  });
+
   it("keeps the submit action disabled when no files are selected", () => {
     const markup = renderToStaticMarkup(
       <ConversionForm

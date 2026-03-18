@@ -31,6 +31,7 @@ export function ConversionForm({
     () => "Core paths: DOCX -> MD, MD -> DOCX, MD -> PDF. PDF -> MD remains disabled in this scaffold.",
     []
   );
+  const scopeHint = "MVP file intake uses the file picker only. Drag-and-drop, drag-in folders, and file watching stay out of scope for now.";
 
   const handlePickFiles = async () => {
     const paths = await window.markdownBridge.pickFiles();
@@ -68,6 +69,7 @@ export function ConversionForm({
   return (
     <div className="conversion-form">
       <p className="muted">{supportedHint}</p>
+      <p className="muted">{scopeHint}</p>
       <div className="button-row">
         <button type="button" onClick={handlePickFiles}>
           Select files

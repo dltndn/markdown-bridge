@@ -14,22 +14,16 @@ export class JobStore {
 
   create(items: Omit<JobItem, "id" | "createdAt" | "updatedAt">[]): ConversionJob {
     const now = new Date().toISOString();
+    const jobItems = items.map((item) => ({
+      ...item,
+      id: crypto.randomUUID(),
+      createdAt: now,
+      updatedAt: now
+    }));
     const job: ConversionJob = {
       id: crypto.randomUUID(),
-      items: items.map((item) => ({
-        ...item,
-        id: crypto.randomUUID(),
-        createdAt: now,
-        updatedAt: now
-      })),
-      summary: {
-        total: items.length,
-        queued: items.length,
-        processing: 0,
-        success: 0,
-        failed: 0,
-        skipped: 0
-      }
+      items: jobItems,
+      summary: summarize(jobItems)
     };
 
     this.jobs.set(job.id, job);
@@ -80,4 +74,3 @@ function summarize(items: JobItem[]): ConversionJob["summary"] {
     skipped: counts.skipped
   };
 }
-

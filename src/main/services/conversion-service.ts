@@ -19,6 +19,13 @@ type QueueEntry = {
   itemId: string;
 };
 
+type NormalizedErrorCode = "invalid_configuration" | "output_write_failed";
+
+type NormalizedServiceError = Error & {
+  code: NormalizedErrorCode;
+  cause?: unknown;
+};
+
 export class ConversionService {
   private readonly queue: QueueEntry[] = [];
   private readonly listeners = new Set<JobListener>();
@@ -45,6 +52,8 @@ export class ConversionService {
   }
 
   async createJob(request: ConversionRequest): Promise<ConversionJob> {
+    validateRequest(request);
+
     const items: Array<Omit<JobItem, "id" | "createdAt" | "updatedAt">> = await Promise.all(
       request.inputPaths.map(async (inputPath): Promise<Omit<JobItem, "id" | "createdAt" | "updatedAt">> => {
         const inputFormat = getFormatFromPath(inputPath);
@@ -72,7 +81,11 @@ export class ConversionService {
     const hasQueuedItems = items.some((item) => item.status === "queued");
 
     if (hasQueuedItems) {
-      await ensureDirectoryExists(request.outputDirectory);
+      try {
+        await ensureDirectoryExists(request.outputDirectory);
+      } catch (error) {
+        throw createNormalizedError("output_write_failed", "Output directory could not be created.", error);
+      }
     }
 
     const finalizedItems = await Promise.all(
@@ -245,6 +258,26 @@ function buildUnsupportedPathItem(
     errorCode,
     errorMessage: "This conversion path is not available in the current MVP scaffold."
   };
+}
+
+function validateRequest(request: ConversionRequest): void {
+  if (request.inputPaths.length === 0) {
+    throw createNormalizedError("invalid_configuration", "At least one input file is required.");
+  }
+
+  if (!request.outputDirectory.trim()) {
+    throw createNormalizedError("invalid_configuration", "Output directory is required.");
+  }
+}
+
+function createNormalizedError(code: NormalizedErrorCode, message: string, cause?: unknown): NormalizedServiceError {
+  const error = new Error(message) as NormalizedServiceError;
+  error.code = code;
+  if (cause !== undefined) {
+    error.cause = cause;
+  }
+
+  return error;
 }
 
 function spawnPandoc(args: string[], cwd: string): Promise<void> {

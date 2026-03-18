@@ -1,10 +1,10 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { ConversionJob, ConversionRequest, JobItem, JobUpdateEvent } from "../../shared/contracts";
-import { EnvironmentService } from "../system/environment";
+import type { ConversionFormat, ConversionJob, ConversionRequest, JobItem, JobUpdateEvent } from "../../shared/contracts";
+import type { EnvironmentService } from "../system/environment";
 import { buildPandocArgs } from "./command-builder";
-import { JobStore } from "./job-store";
+import type { JobStore } from "./job-store";
 import {
   ensureDirectoryExists,
   getFormatFromPath,
@@ -45,42 +45,22 @@ export class ConversionService {
   }
 
   async createJob(request: ConversionRequest): Promise<ConversionJob> {
-    await ensureDirectoryExists(request.outputDirectory);
-
-    const items = await Promise.all(
-      request.inputPaths.map(async (inputPath) => {
+    const items: Array<Omit<JobItem, "id" | "createdAt" | "updatedAt">> = await Promise.all(
+      request.inputPaths.map(async (inputPath): Promise<Omit<JobItem, "id" | "createdAt" | "updatedAt">> => {
         const inputFormat = getFormatFromPath(inputPath);
 
         if (!inputFormat) {
-          return {
-            inputPath,
-            inputFormat: "md",
-            outputPath: null,
-            targetFormat: request.targetFormat,
-            status: "failed" as const,
-            errorCode: "unsupported_format",
-            errorMessage: "Unsupported file extension."
-          };
+          return buildUnsupportedFormatItem(inputPath, request.targetFormat);
         }
 
-        const output = await resolveOutputPath(inputPath, request.outputDirectory, request.targetFormat, request.collisionPolicy);
-
-        if (output.skipped) {
-          return {
-            inputPath,
-            inputFormat,
-            outputPath: null,
-            targetFormat: request.targetFormat,
-            status: "skipped" as const,
-            errorCode: null,
-            errorMessage: "Skipped because the output file already exists."
-          };
+        if (!isSupportedConversionPath(inputFormat, request.targetFormat)) {
+          return buildUnsupportedPathItem(inputPath, inputFormat, request.targetFormat);
         }
 
         return {
           inputPath,
           inputFormat,
-          outputPath: output.outputPath,
+          outputPath: null,
           targetFormat: request.targetFormat,
           status: "queued" as const,
           errorCode: null,
@@ -89,7 +69,38 @@ export class ConversionService {
       })
     );
 
-    const job = this.jobStore.create(items);
+    const hasQueuedItems = items.some((item) => item.status === "queued");
+
+    if (hasQueuedItems) {
+      await ensureDirectoryExists(request.outputDirectory);
+    }
+
+    const finalizedItems = await Promise.all(
+      items.map(async (item): Promise<Omit<JobItem, "id" | "createdAt" | "updatedAt">> => {
+        if (item.status !== "queued") {
+          return item;
+        }
+
+        const output = await resolveOutputPath(item.inputPath, request.outputDirectory, item.targetFormat, request.collisionPolicy);
+
+        if (output.skipped) {
+          return {
+            ...item,
+            outputPath: null,
+            status: "skipped" as const,
+            errorCode: null,
+            errorMessage: "Skipped because the output file already exists."
+          };
+        }
+
+        return {
+          ...item,
+          outputPath: output.outputPath
+        };
+      })
+    );
+
+    const job = this.jobStore.create(finalizedItems);
 
     for (const item of job.items) {
       if (item.status === "queued") {
@@ -199,6 +210,41 @@ export class ConversionService {
       listener(event);
     }
   }
+}
+
+function buildUnsupportedFormatItem(
+  inputPath: string,
+  targetFormat: ConversionFormat
+): Omit<JobItem, "id" | "createdAt" | "updatedAt"> {
+  return {
+    inputPath,
+    inputFormat: "md",
+    outputPath: null,
+    targetFormat,
+    status: "failed",
+    errorCode: "unsupported_format",
+    errorMessage: "Unsupported file extension."
+  };
+}
+
+function buildUnsupportedPathItem(
+  inputPath: string,
+  inputFormat: ConversionFormat,
+  targetFormat: ConversionFormat
+): Omit<JobItem, "id" | "createdAt" | "updatedAt"> {
+  const errorCode = inputFormat === "pdf" && targetFormat === "md"
+    ? "experimental_path_unavailable"
+    : "unsupported_conversion_path";
+
+  return {
+    inputPath,
+    inputFormat,
+    outputPath: null,
+    targetFormat,
+    status: "failed",
+    errorCode,
+    errorMessage: "This conversion path is not available in the current MVP scaffold."
+  };
 }
 
 function spawnPandoc(args: string[], cwd: string): Promise<void> {

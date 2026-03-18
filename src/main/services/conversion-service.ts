@@ -132,17 +132,22 @@ export class ConversionService {
     }
 
     this.processing = true;
+    try {
+      while (this.queue.length > 0) {
+        const next = this.queue.shift();
+        if (!next) {
+          break;
+        }
 
-    while (this.queue.length > 0) {
-      const next = this.queue.shift();
-      if (!next) {
-        break;
+        try {
+          await this.processItem(next.jobId, next.itemId);
+        } catch (error) {
+          this.failUnexpectedItem(next.jobId, next.itemId, error);
+        }
       }
-
-      await this.processItem(next.jobId, next.itemId);
+    } finally {
+      this.processing = false;
     }
-
-    this.processing = false;
   }
 
   private async processItem(jobId: string, itemId: string): Promise<void> {
@@ -216,6 +221,21 @@ export class ConversionService {
   private update(jobId: string, itemId: string, patch: Partial<JobItem>): void {
     const job = this.jobStore.updateItem(jobId, itemId, patch);
     this.emit({ job, itemId });
+  }
+
+  private failUnexpectedItem(jobId: string, itemId: string, error: unknown): void {
+    const job = this.jobStore.get(jobId);
+    const item = job?.items.find((candidate) => candidate.id === itemId);
+
+    if (!item) {
+      return;
+    }
+
+    this.update(jobId, itemId, {
+      status: "failed",
+      errorCode: "conversion_failed",
+      errorMessage: error instanceof Error ? error.message : "Pandoc execution failed."
+    });
   }
 
   private emit(event: JobUpdateEvent): void {

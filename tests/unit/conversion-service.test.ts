@@ -46,6 +46,25 @@ async function waitForFailedItem(service: ConversionService, jobId: string): Pro
   throw new Error("Timed out waiting for a failed item.");
 }
 
+async function waitForJobToSettle(service: ConversionService, jobId: string, expectedTerminalItems: number): Promise<NonNullable<ReturnType<ConversionService["getJob"]>>> {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const job = service.getJob(jobId);
+
+    if (!job) {
+      throw new Error(`Unknown job: ${jobId}`);
+    }
+
+    const terminalItems = job.items.filter((item) => ["failed", "success", "skipped"].includes(item.status));
+    if (terminalItems.length === expectedTerminalItems) {
+      return job;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  throw new Error("Timed out waiting for the job to settle.");
+}
+
 describe("ConversionService.createJob", () => {
   it("fails unsupported conversion paths before creating output directories or queueing work", async () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
@@ -153,6 +172,65 @@ describe("ConversionService.createJob", () => {
     ).rejects.toMatchObject({
       code: "invalid_configuration",
       message: "At least one input file is required."
+    });
+  });
+
+  it("continues processing later queue items when one item throws unexpectedly", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
+    const outputDirectory = path.join(tempRoot, "out");
+    const firstInput = path.join(tempRoot, "first.md");
+    const secondInput = path.join(tempRoot, "second.md");
+    createdDirectories.push(tempRoot);
+    await fs.writeFile(firstInput, "# first");
+    await fs.writeFile(secondInput, "# second");
+
+    let statusCalls = 0;
+    const service = new ConversionService(
+      {
+        getStatus: async (): Promise<EnvironmentStatus> => {
+          statusCalls += 1;
+
+          if (statusCalls === 1) {
+            throw new Error("Environment probe crashed unexpectedly.");
+          }
+
+          return {
+            ...createEnvironmentStatus(),
+            pandocAvailable: false
+          };
+        }
+      },
+      new JobStore()
+    );
+
+    const job = await service.createJob({
+      inputPaths: [firstInput, secondInput],
+      targetFormat: "docx",
+      outputDirectory,
+      collisionPolicy: "rename"
+    });
+
+    const settledJob = await waitForJobToSettle(service, job.id, 2);
+    expect(settledJob.items).toHaveLength(2);
+    expect(settledJob.items[0]).toMatchObject({
+      inputPath: firstInput,
+      status: "failed",
+      errorCode: "conversion_failed",
+      errorMessage: "Environment probe crashed unexpectedly."
+    });
+    expect(settledJob.items[1]).toMatchObject({
+      inputPath: secondInput,
+      status: "failed",
+      errorCode: "pandoc_not_found",
+      errorMessage: "Pandoc is not available on PATH."
+    });
+    expect(settledJob.summary).toMatchObject({
+      total: 2,
+      queued: 0,
+      processing: 0,
+      success: 0,
+      failed: 2,
+      skipped: 0
     });
   });
 });

@@ -352,4 +352,71 @@ describe("ConversionService.createJob", () => {
       skipped: 0
     });
   });
+
+  it("processes queued items serially so the second item does not start before the first finishes", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
+    const outputDirectory = path.join(tempRoot, "out");
+    const firstInput = path.join(tempRoot, "first.md");
+    const secondInput = path.join(tempRoot, "second.md");
+    createdDirectories.push(tempRoot);
+    await fs.writeFile(firstInput, "# first");
+    await fs.writeFile(secondInput, "# second");
+
+    const callOrder: string[] = [];
+    let resolveFirstStarted!: () => void;
+    let releaseFirst!: () => void;
+
+    const firstStarted = new Promise<void>((resolve) => {
+      resolveFirstStarted = resolve;
+    });
+    const firstFinished = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+
+    const service = createService({
+      executePandoc: async (args) => {
+        callOrder.push(args[0]);
+
+        if (args[0] === firstInput) {
+          resolveFirstStarted();
+          await firstFinished;
+        }
+      }
+    });
+
+    const job = await service.createJob({
+      inputPaths: [firstInput, secondInput],
+      targetFormat: "docx",
+      outputDirectory,
+      collisionPolicy: "rename"
+    });
+
+    await firstStarted;
+    expect(callOrder).toEqual([firstInput]);
+    expect(service.getJob(job.id)?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          inputPath: firstInput,
+          status: "processing"
+        }),
+        expect.objectContaining({
+          inputPath: secondInput,
+          status: "queued"
+        })
+      ])
+    );
+
+    releaseFirst();
+
+    const settledJob = await waitForJobToSettle(service, job.id, 2);
+    expect(callOrder).toEqual([firstInput, secondInput]);
+    expect(settledJob.summary).toMatchObject({
+      total: 2,
+      queued: 0,
+      processing: 0,
+      success: 2,
+      failed: 0,
+      skipped: 0
+    });
+  });
 });

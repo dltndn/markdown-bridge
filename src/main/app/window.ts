@@ -19,7 +19,9 @@ export function createMainWindow(): BrowserWindow {
 
   if (!app.isPackaged) {
     void window.loadURL(RENDERER_DEV_URL);
-    window.webContents.openDevTools({ mode: "detach" });
+    if (process.env.ELECTRON_OPEN_DEVTOOLS === "1") {
+      window.webContents.openDevTools({ mode: "detach" });
+    }
   } else {
     void window.loadFile(path.resolve(__dirname, "../../renderer/index.html"));
   }

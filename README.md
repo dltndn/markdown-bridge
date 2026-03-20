@@ -267,9 +267,3 @@ End of session:
 - Record validation status, blocker notes, and the next task for handoff
 - Finish only after the required verification is complete for the task scope
 
-## Documentation
-
-- [docs/README.md](./docs/README.md)
-- [markdown-bridge PRD](./docs/prd/markdown-bridge-prd.md)
-- [markdown-bridge tech spec draft](./docs/tech-spec/markdown-bridge-tech-spec-draft.md)
-- [markdown-bridge implementation plan](./docs/tech-spec/markdown-bridge-implementation-plan.md)

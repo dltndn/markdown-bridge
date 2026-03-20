@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
+  blocksMatchingMarkdownState,
   ConversionForm,
   readCachedOutputDirectory,
   writeCachedOutputDirectory
@@ -67,6 +68,21 @@ describe("ConversionForm", () => {
     expect(markup).toContain("disabled=\"\"");
   });
 
+  it("blocks Markdown to Markdown submissions in the form", () => {
+    const markup = renderToStaticMarkup(
+      <ConversionForm
+        selectedFiles={["/tmp/alpha.md"]}
+        onFilesChange={() => undefined}
+        outputDirectory="/tmp/out"
+        onOutputDirectoryChange={() => undefined}
+        onSubmit={async () => undefined}
+      />
+    );
+
+    expect(markup).toContain("Selected files and target format cannot both be Markdown or both be non-Markdown.");
+    expect(markup).toContain("disabled=\"\"");
+  });
+
   it("renders the selected files list", () => {
     const markup = renderToStaticMarkup(
       <ConversionForm
@@ -115,5 +131,13 @@ describe("ConversionForm", () => {
 
     expect(storage.removeItem).toHaveBeenCalledWith("markdown-bridge.output-directory");
     expect(storage.setItem).not.toHaveBeenCalled();
+  });
+
+  it("blocks when selected files and target format are both non-Markdown", () => {
+    expect(blocksMatchingMarkdownState(["/tmp/alpha.docx"], "pdf")).toBe(true);
+  });
+
+  it("allows mixed file types because the selection is not uniformly Markdown or non-Markdown", () => {
+    expect(blocksMatchingMarkdownState(["/tmp/alpha.md", "/tmp/beta.docx"], "pdf")).toBe(false);
   });
 });

@@ -16,6 +16,22 @@ function blocksPdfToMarkdown(selectedFiles: string[], targetFormat: ConversionFo
   return targetFormat === "md" && selectedFiles.some((filePath) => filePath.toLowerCase().endsWith(".pdf"));
 }
 
+function isMarkdownFile(filePath: string): boolean {
+  return filePath.toLowerCase().endsWith(".md");
+}
+
+export function blocksMatchingMarkdownState(selectedFiles: string[], targetFormat: ConversionFormat): boolean {
+  if (selectedFiles.length === 0) {
+    return false;
+  }
+
+  const allFilesAreMarkdown = selectedFiles.every(isMarkdownFile);
+  const allFilesAreNonMarkdown = selectedFiles.every((filePath) => !isMarkdownFile(filePath));
+  const targetIsMarkdown = targetFormat === "md";
+
+  return (allFilesAreMarkdown && targetIsMarkdown) || (allFilesAreNonMarkdown && !targetIsMarkdown);
+}
+
 export function readCachedOutputDirectory(storage: Pick<Storage, "getItem">): string {
   return storage.getItem(OUTPUT_DIRECTORY_STORAGE_KEY) ?? "";
 }
@@ -40,6 +56,7 @@ export function ConversionForm({
   const [collisionPolicy, setCollisionPolicy] = useState<CollisionPolicy>("rename");
   const [submitting, setSubmitting] = useState(false);
   const blockedByUnsupportedCombination = blocksPdfToMarkdown(selectedFiles, targetFormat);
+  const blockedByMatchingMarkdownState = blocksMatchingMarkdownState(selectedFiles, targetFormat);
   const supportedHint = useMemo(
     // This hint is static today. If the form becomes capability-driven, cover the
     // IPC-to-renderer wiring with a test instead of relying on copy-only regressions.
@@ -91,7 +108,7 @@ export function ConversionForm({
   };
 
   const handleSubmit = async () => {
-    if (selectedFiles.length === 0 || !outputDirectory) {
+    if (selectedFiles.length === 0 || !outputDirectory || blockedByUnsupportedCombination || blockedByMatchingMarkdownState) {
       return;
     }
 
@@ -175,10 +192,22 @@ export function ConversionForm({
         <p className="muted form-warning">PDF to MD submissions are blocked in this scaffold.</p>
       ) : null}
 
+      {blockedByMatchingMarkdownState ? (
+        <p className="muted form-warning">
+          Selected files and target format cannot both be Markdown or both be non-Markdown.
+        </p>
+      ) : null}
+
       <button
         type="button"
         className="button-primary"
-        disabled={submitting || selectedFiles.length === 0 || !outputDirectory || blockedByUnsupportedCombination}
+        disabled={
+          submitting ||
+          selectedFiles.length === 0 ||
+          !outputDirectory ||
+          blockedByUnsupportedCombination ||
+          blockedByMatchingMarkdownState
+        }
         onClick={handleSubmit}
       >
         {submitting ? "Creating job..." : "Start conversion"}

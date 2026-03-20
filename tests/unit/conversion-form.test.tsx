@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ConversionForm } from "../../src/renderer/features/conversion/ConversionForm";
+import {
+  ConversionForm,
+  readCachedOutputDirectory,
+  writeCachedOutputDirectory
+} from "../../src/renderer/features/conversion/ConversionForm";
 
 describe("ConversionForm", () => {
   it("describes PDF to MD as disabled in the scaffold", () => {
@@ -79,5 +83,37 @@ describe("ConversionForm", () => {
     expect(markup).toContain("/tmp/alpha.md");
     expect(markup).toContain("beta.docx");
     expect(markup).toContain("/tmp/beta.docx");
+  });
+
+  it("reads the cached output directory from storage", () => {
+    const storage = {
+      getItem: vi.fn(() => "/tmp/out")
+    };
+
+    expect(readCachedOutputDirectory(storage)).toBe("/tmp/out");
+  });
+
+  it("writes the output directory to storage", () => {
+    const storage = {
+      removeItem: vi.fn(),
+      setItem: vi.fn()
+    };
+
+    writeCachedOutputDirectory(storage, "/tmp/out");
+
+    expect(storage.setItem).toHaveBeenCalledWith("markdown-bridge.output-directory", "/tmp/out");
+    expect(storage.removeItem).not.toHaveBeenCalled();
+  });
+
+  it("clears the cached output directory when the value is empty", () => {
+    const storage = {
+      removeItem: vi.fn(),
+      setItem: vi.fn()
+    };
+
+    writeCachedOutputDirectory(storage, "");
+
+    expect(storage.removeItem).toHaveBeenCalledWith("markdown-bridge.output-directory");
+    expect(storage.setItem).not.toHaveBeenCalled();
   });
 });

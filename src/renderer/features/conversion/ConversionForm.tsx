@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CollisionPolicy, ConversionFormat, ConversionRequest } from "../../../shared/contracts";
 import type { Dispatch, SetStateAction } from "react";
+
+const OUTPUT_DIRECTORY_STORAGE_KEY = "markdown-bridge.output-directory";
 
 type ConversionFormProps = {
   selectedFiles: string[];
@@ -12,6 +14,19 @@ type ConversionFormProps = {
 
 function blocksPdfToMarkdown(selectedFiles: string[], targetFormat: ConversionFormat): boolean {
   return targetFormat === "md" && selectedFiles.some((filePath) => filePath.toLowerCase().endsWith(".pdf"));
+}
+
+export function readCachedOutputDirectory(storage: Pick<Storage, "getItem">): string {
+  return storage.getItem(OUTPUT_DIRECTORY_STORAGE_KEY) ?? "";
+}
+
+export function writeCachedOutputDirectory(storage: Pick<Storage, "removeItem" | "setItem">, outputDirectory: string): void {
+  if (outputDirectory) {
+    storage.setItem(OUTPUT_DIRECTORY_STORAGE_KEY, outputDirectory);
+    return;
+  }
+
+  storage.removeItem(OUTPUT_DIRECTORY_STORAGE_KEY);
 }
 
 export function ConversionForm({
@@ -32,6 +47,34 @@ export function ConversionForm({
     []
   );
   const scopeHint = "MVP file intake uses the file picker only. Drag-and-drop, drag-in folders, and file watching stay out of scope for now.";
+
+  useEffect(() => {
+    if (typeof window === "undefined" || outputDirectory) {
+      return;
+    }
+
+    try {
+      const cachedDirectory = readCachedOutputDirectory(window.localStorage);
+
+      if (cachedDirectory) {
+        onOutputDirectoryChange(cachedDirectory);
+      }
+    } catch {
+      // Ignore local persistence failures so the form still works in restricted runtimes.
+    }
+  }, [onOutputDirectoryChange, outputDirectory]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      writeCachedOutputDirectory(window.localStorage, outputDirectory);
+    } catch {
+      // Ignore local persistence failures so the form still works in restricted runtimes.
+    }
+  }, [outputDirectory]);
 
   const handlePickFiles = async () => {
     const paths = await window.markdownBridge.pickFiles();

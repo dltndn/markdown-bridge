@@ -6,6 +6,7 @@ const api: MarkdownBridgeApi = {
   pickFiles: () => ipcRenderer.invoke("dialog:pickFiles"),
   pickOutputDirectory: () => ipcRenderer.invoke("dialog:pickOutputDirectory"),
   openOutputFolder: (outputPath: string) => ipcRenderer.invoke("dialog:openOutputFolder", outputPath),
+  openExternalUrl: (url: string) => ipcRenderer.invoke("app:openExternalUrl", url),
   getCapabilities: () => ipcRenderer.invoke("conversion:getCapabilities"),
   createJob: (request: ConversionRequest) => ipcRenderer.invoke("conversion:createJob", request),
   getJob: (jobId: string) => ipcRenderer.invoke("conversion:getJob", jobId),

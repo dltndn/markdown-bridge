@@ -85,6 +85,7 @@ export type MarkdownBridgeApi = {
   pickFiles: () => Promise<string[]>;
   pickOutputDirectory: () => Promise<string | null>;
   openOutputFolder: (outputPath: string) => Promise<void>;
+  openExternalUrl: (url: string) => Promise<void>;
   getCapabilities: () => Promise<ConversionCapabilities>;
   createJob: (request: ConversionRequest) => Promise<ConversionJob>;
   getJob: (jobId: string) => Promise<ConversionJob | null>;

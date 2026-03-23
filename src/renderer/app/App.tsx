@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { MouseEvent } from "react";
 import type { ConversionJob, ConversionRequest, EnvironmentStatus } from "../../shared/contracts";
 import { SectionCard } from "../components/SectionCard";
 import { ConversionForm } from "../features/conversion/ConversionForm";
@@ -6,6 +7,8 @@ import { EnvironmentBanner } from "../features/environment/EnvironmentBanner";
 import { JobsPanel } from "../features/jobs/JobsPanel";
 import { useJobSubscription } from "../hooks/useJobSubscription";
 import { mergeJobUpdate, upsertJob } from "./job-state";
+
+const REPOSITORY_URL = "https://github.com/dltndn/markdown-bridge";
 
 export function App() {
   const [environment, setEnvironment] = useState<EnvironmentStatus | null>(null);
@@ -32,13 +35,20 @@ export function App() {
     setJobs((currentJobs) => upsertJob(currentJobs, job));
   };
 
+  const handleOpenRepository = async (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    await window.markdownBridge.openExternalUrl(REPOSITORY_URL);
+  };
+
   return (
     <main className="app-shell">
       <section className="hero">
         <p className="eyebrow">Local-first desktop conversion</p>
         <h1>markdown-bridge</h1>
         <p className="hero-copy">
-          Markdown-centered document conversion scaffold for Electron, React, TypeScript, and Pandoc.
+          <a href={REPOSITORY_URL} onClick={handleOpenRepository}>
+            github.com/dltndn/markdown-bridge
+          </a>
         </p>
       </section>
 

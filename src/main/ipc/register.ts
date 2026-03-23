@@ -13,6 +13,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow, logger: MainLogge
   const conversionService = new ConversionService(environmentService, new JobStore(), undefined, logger);
 
   registerHandle("app:getEnvironmentStatus", async () => environmentService.getStatus());
+  registerHandle("app:openExternalUrl", async (_event, url: string) => {
+    await shell.openExternal(url);
+  });
   registerHandle("dialog:pickFiles", async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ["openFile", "multiSelections"],

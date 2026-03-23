@@ -76,31 +76,36 @@ pandoc --version
 
 ```bash
 brew install --cask basictex
-eval "$(/usr/libexec/path_helper)"
 ```
 
-5. Verify `xelatex`:
+5. Add the TeX binaries to your shell `PATH`:
+
+```bash
+sudo tlmgr path add
+```
+
+6. Prepare `xelatex` itself:
+
+```bash
+sudo tlmgr update --self --all
+sudo tlmgr install xetex
+```
+
+7. If needed for Korean document support, install the related LaTeX packages:
+
+```bash
+sudo tlmgr install fontspec xeCJK
+```
+
+8. Verify `xelatex`:
 
 ```bash
 xelatex --version
 ```
 
-6. Verify that the required Korean LaTeX package is installed:
+9. If `xelatex` is still not found, open a new `Terminal` window and run the check again. On some macOS setups, the TeX binary path is not visible until you start a fresh shell.
 
-```bash
-kpsewhich xeCJK.sty
-```
-
-7. If `kpsewhich xeCJK.sty` prints nothing, your TeX install is too minimal for Korean PDF export. With `basictex`, install the missing package set:
-
-```bash
-sudo tlmgr update --self
-sudo tlmgr install xecjk collection-langcjk
-```
-
-8. If `xelatex` is still not found, open a new `Terminal` window and run the check again. On some macOS setups, the TeX binary path is not visible until you start a fresh shell.
-
-9. If `basictex` is not enough for your environment or you want the least friction, install the full `MacTeX` package from the official TUG site instead:
+10. If `basictex` is not enough for your environment or you want the least friction, install the full `MacTeX` package from the official TUG site instead:
 
 - MacTeX download: [tug.org/mactex](https://www.tug.org/mactex/)
 
@@ -238,54 +243,3 @@ If you only want to prove the app works end-to-end, use this flow:
 - The environment banner reports whether `Pandoc` and `xelatex`-based PDF export support are available
 - The create form blocks `PDF -> MD` in the current scaffold
 - The results panel shows job totals and per-file states such as `queued`, `processing`, `success`, `failed`, and `skipped`
-
-## Validation
-
-Run validation commands from the repository root after `npm install`:
-
-```bash
-npm run typecheck
-npm test
-npm run lint
-```
-
-Current repository status as of 2026-03-19:
-
-- `npm run typecheck` passes
-- `npm test` passes
-- `npm run lint` passes
-
-## First Manual Run Checklist
-
-Use this checklist if you want to confirm the scaffold is actually runnable, not just installed:
-
-1. Run `npm install`
-2. Verify `pandoc --version` works in the same shell
-3. If you need PDF export, verify one supported PDF engine command works in the same shell
-4. Run `npm run dev`
-5. Confirm the app window opens and the environment banner reflects your installed tools
-6. Select sample `.docx` or `.md` files and an output directory
-7. Confirm `PDF -> MD` remains blocked in the current UI
-
-## Known Gaps
-
-- Drag-and-drop intake is planned in the PRD but not implemented in the current scaffold
-- `PDF -> MD` is not enabled
-- Packaging and end-user installation flow are not documented yet
-- This README explains developer setup for the repository, not packaged-app installation
-
-## Session Checklist
-
-Start of session:
-
-- Re-read the full tech spec, then summarize the session scope in one sentence
-- Read `docs/tech-spec/markdown-bridge-implementation-plan.md` and confirm the target task scope
-- Note the relevant spec sections for the task you are about to change
-- Check the current code and validation status before editing
-- Identify environment blockers before treating something as an open question
-
-End of session:
-
-- Update the relevant task checkbox and work record
-- Record validation status, blocker notes, and the next task for handoff
-- Finish only after the required verification is complete for the task scope

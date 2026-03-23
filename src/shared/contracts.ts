@@ -26,6 +26,8 @@ export type EnvironmentStatus = {
   pandocAvailable: boolean;
   pandocVersion: string | null;
   pdfExportAvailable: boolean;
+  pdfEngineName: string | null;
+  pdfFontProfile: string | null;
   platform: PlatformName;
   issues: EnvironmentIssue[];
 };

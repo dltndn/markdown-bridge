@@ -1,1 +1,1 @@
-export const PDF_ENGINE_MISSING_MESSAGE = "Markdown to PDF export needs a PDF engine such as wkhtmltopdf, WeasyPrint, LaTeX, or Tectonic.";
+export const PDF_ENGINE_MISSING_MESSAGE = "Markdown to PDF export for Korean documents requires xelatex with the xeCJK LaTeX package. Install a TeX distribution or package set that provides both, then restart the app.";

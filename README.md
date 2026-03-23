@@ -39,14 +39,11 @@ This repository is an MVP scaffold. The currently supported conversion paths are
 
 ### Required Only For `MD -> PDF`
 
-Install at least one PDF engine that Pandoc can use. The app currently probes for these commands on `PATH`:
+For this repository, reliable Korean `MD -> PDF` export requires `xelatex`.
 
-- `weasyprint`
-- `pdflatex`
-- `xelatex`
-- `tectonic`
-
-If none of them are installed, the app can still start, but `MD -> PDF` should be treated as unavailable.
+- macOS and Windows PDF export is treated as available only when `xelatex` is installed and available on `PATH`
+- Other engines may exist on your system, but they are not treated as sufficient for supported Korean PDF output in this app
+- If `xelatex` is missing, the app can still start, but `MD -> PDF` should be treated as unavailable
 
 ### Platform Notes
 
@@ -75,30 +72,43 @@ brew install pandoc
 pandoc --version
 ```
 
-4. If you need `MD -> PDF`, install one supported PDF engine. The simplest Homebrew option is:
-
-```bash
-brew install tectonic
-```
-
-5. Verify the PDF engine:
-
-```bash
-tectonic --version
-```
-
-Alternative PDF engine for macOS:
+4. If you need `MD -> PDF`, install a TeX distribution that provides `xelatex`. A practical Homebrew path is:
 
 ```bash
 brew install --cask basictex
 eval "$(/usr/libexec/path_helper)"
-pdflatex --version
 ```
 
-Why this README does not recommend `brew install --cask wkhtmltopdf`:
+5. Verify `xelatex`:
 
-- As of 2026-03-19, Homebrew no longer provides a `wkhtmltopdf` cask, so that command fails with `No Cask with this name exists`
-- For this repository, `tectonic` or `basictex` is a more reliable macOS path because the app already detects `tectonic`, `pdflatex`, and `xelatex`
+```bash
+xelatex --version
+```
+
+6. Verify that the required Korean LaTeX package is installed:
+
+```bash
+kpsewhich xeCJK.sty
+```
+
+7. If `kpsewhich xeCJK.sty` prints nothing, your TeX install is too minimal for Korean PDF export. With `basictex`, install the missing package set:
+
+```bash
+sudo tlmgr update --self
+sudo tlmgr install xecjk collection-langcjk
+```
+
+8. If `xelatex` is still not found, open a new `Terminal` window and run the check again. On some macOS setups, the TeX binary path is not visible until you start a fresh shell.
+
+9. If `basictex` is not enough for your environment or you want the least friction, install the full `MacTeX` package from the official TUG site instead:
+
+- MacTeX download: [tug.org/mactex](https://www.tug.org/mactex/)
+
+Why this matters for Korean documents:
+
+- The app uses `xelatex` plus the macOS system font `Apple SD Gothic Neo` for Korean PDF output
+- The LaTeX environment must also include `xeCJK`; `xelatex` alone is not sufficient
+- Other PDF engines are not treated as a supported replacement for Korean PDF export in this app
 
 Alternative Pandoc install paths:
 
@@ -123,17 +133,27 @@ winget install --source winget --exact --id JohnMacFarlane.Pandoc
 pandoc --version
 ```
 
-5. If you need `MD -> PDF`, install one supported PDF engine. One common option is:
+5. If you need `MD -> PDF`, install a TeX distribution that provides `xelatex`. The most practical Windows path is the Basic MiKTeX Installer from the official MiKTeX site:
+
+- MiKTeX download: [miktex.org/download](https://miktex.org/download)
+- Windows install guide: [miktex.org/howto/install-miktex](https://miktex.org/howto/install-miktex)
+
+6. During MiKTeX setup, prefer a private per-user install unless you specifically need a shared machine-wide setup.
+
+7. After installation, open `MiKTeX Console`, check for updates, then close and reopen `PowerShell`.
+
+8. Verify `xelatex`:
 
 ```powershell
-winget install wkhtmltopdf
+xelatex --version
 ```
 
-6. Close and reopen `PowerShell`, then verify:
+9. If `xelatex` is still not found, sign out and back in or open a brand-new `PowerShell` session so the updated `PATH` is picked up.
 
-```powershell
-wkhtmltopdf --version
-```
+Why this matters for Korean documents:
+
+- The app uses `xelatex` plus the Windows system font `Malgun Gothic` for Korean PDF output
+- Other PDF engines are not treated as a supported replacement for Korean PDF export in this app
 
 Alternative paths:
 
@@ -145,6 +165,8 @@ Use the official installer or package manager flow you normally trust for your p
 Official reference:
 
 - Pandoc install guide: [pandoc.org/installing.html](https://pandoc.org/installing.html)
+- MacTeX / BasicTeX: [tug.org/mactex](https://www.tug.org/mactex/)
+- MiKTeX download and install docs: [miktex.org/download](https://miktex.org/download), [miktex.org/howto/install-miktex](https://miktex.org/howto/install-miktex)
 
 ## Quick Start
 
@@ -158,10 +180,10 @@ Optional but recommended: confirm external tools are visible on `PATH` before st
 
 ```bash
 pandoc --version
-tectonic --version
+xelatex --version
 ```
 
-The second command is only an example. If you use `basictex`, `weasyprint`, or another supported engine from the probe list above, check that command instead.
+The second command is required if you plan to export Korean Markdown documents to PDF.
 
 ## Run The App
 
@@ -175,12 +197,13 @@ Development runtime details:
 
 - The renderer dev server runs on `http://localhost:5179`
 - Electron waits for the renderer and compiled preload/main outputs before launching
-- On startup, the app checks whether `pandoc` and a supported PDF engine are available
+- On startup, the app checks whether `pandoc` and `xelatex` are available
+- For `MD -> PDF`, the app uses `xelatex` and passes platform-specific Korean font variables to `pandoc`
 
 If the app starts with a setup warning banner, read it literally:
 
 - `Pandoc was not found on PATH`: install Pandoc and restart the app
-- `Markdown to PDF export needs a PDF engine...`: install one supported PDF engine if you need `MD -> PDF`
+- `Markdown to PDF export for Korean documents requires xelatex...`: install a TeX distribution that provides `xelatex` if you need `MD -> PDF`
 
 ## How To Use The App
 
@@ -212,7 +235,7 @@ If you only want to prove the app works end-to-end, use this flow:
 
 ### What The UI Will Tell You
 
-- The environment banner reports whether `Pandoc` and PDF export support are available
+- The environment banner reports whether `Pandoc` and `xelatex`-based PDF export support are available
 - The create form blocks `PDF -> MD` in the current scaffold
 - The results panel shows job totals and per-file states such as `queued`, `processing`, `success`, `failed`, and `skipped`
 
@@ -266,4 +289,3 @@ End of session:
 - Update the relevant task checkbox and work record
 - Record validation status, blocker notes, and the next task for handoff
 - Finish only after the required verification is complete for the task scope
-

@@ -226,20 +226,48 @@ export class ConversionService {
       return;
     }
 
+    if (item.targetFormat === "pdf" && !environment.pdfEngineName) {
+      this.update(jobId, itemId, {
+        status: "failed",
+        errorCode: "pdf_engine_missing",
+        errorMessage: PDF_ENGINE_MISSING_MESSAGE,
+        errorDetails: null
+      });
+      return;
+    }
+
+    if (item.targetFormat === "pdf" && !environment.pdfFontProfile) {
+      this.update(jobId, itemId, {
+        status: "failed",
+        errorCode: "pdf_engine_missing",
+        errorMessage: PDF_ENGINE_MISSING_MESSAGE,
+        errorDetails: null
+      });
+      return;
+    }
+
     this.update(jobId, itemId, { status: "processing" });
 
     try {
-      const args = buildPandocArgs(item.inputPath, item.outputPath, item.inputFormat, item.targetFormat);
+      const args = buildPandocArgs(
+        item.inputPath,
+        item.outputPath,
+        item.inputFormat,
+        item.targetFormat,
+        environment.pdfEngineName,
+        environment.pdfFontProfile
+      );
       await this.executePandoc(args, path.dirname(item.outputPath));
       this.update(jobId, itemId, { status: "success" });
     } catch (error) {
+      const failurePatch = buildConversionFailurePatch(error);
       this.logger.error("pandoc:execution_failed", {
         jobId,
         itemId,
-        errorCode: "conversion_failed",
+        errorCode: failurePatch.errorCode,
         processExitCode: extractProcessExitCode(error)
       });
-      this.update(jobId, itemId, buildConversionFailurePatch(error));
+      this.update(jobId, itemId, failurePatch);
     }
   }
 
@@ -352,11 +380,22 @@ function createNormalizedError(code: NormalizedErrorCode, message: string, cause
 }
 
 function buildConversionFailurePatch(error: unknown): ConversionFailurePatch {
+  const details = error instanceof Error ? error.message : String(error);
+
+  if (isMissingPdfEngineError(details)) {
+    return {
+      status: "failed",
+      errorCode: "pdf_engine_missing",
+      errorMessage: PDF_ENGINE_MISSING_MESSAGE,
+      errorDetails: details
+    };
+  }
+
   return {
     status: "failed",
     errorCode: "conversion_failed",
     errorMessage: "Conversion failed.",
-    errorDetails: error instanceof Error ? error.message : String(error)
+    errorDetails: details
   };
 }
 
@@ -367,6 +406,10 @@ function extractProcessExitCode(error: unknown): number | null {
 
   const maybeExitCode = (error as { exitCode?: unknown }).exitCode;
   return typeof maybeExitCode === "number" ? maybeExitCode : null;
+}
+
+function isMissingPdfEngineError(details: string): boolean {
+  return details.includes("createProcess: find_executable: failed") || details.includes("not found on PATH");
 }
 
 function spawnPandoc(args: string[], cwd: string): Promise<void> {

@@ -19,6 +19,8 @@ function createEnvironmentStatus(): EnvironmentStatus {
     pandocAvailable: true,
     pandocVersion: "3.0.0",
     pdfExportAvailable: true,
+    pdfEngineName: "xelatex",
+    pdfFontProfile: "Apple SD Gothic Neo",
     platform: "darwin",
     issues: []
   };
@@ -247,7 +249,9 @@ describe("ConversionService.createJob", () => {
     const service = createService({
       environmentStatus: {
         ...createEnvironmentStatus(),
-        pdfExportAvailable: false
+        pdfExportAvailable: false,
+        pdfEngineName: null,
+        pdfFontProfile: "Apple SD Gothic Neo"
       }
     });
 
@@ -264,6 +268,80 @@ describe("ConversionService.createJob", () => {
       status: "failed",
       errorCode: "pdf_engine_missing",
       errorMessage: PDF_ENGINE_MISSING_MESSAGE
+    });
+  });
+
+  it("passes the resolved PDF engine to Pandoc for markdown to pdf jobs", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
+    const outputDirectory = path.join(tempRoot, "out");
+    const inputPath = path.join(tempRoot, "sample.md");
+    createdDirectories.push(tempRoot);
+    await fs.writeFile(inputPath, "# sample");
+
+    const calls: Array<{ args: string[]; cwd: string }> = [];
+    const service = createService({
+      executePandoc: async (args, cwd) => {
+        calls.push({ args, cwd });
+      }
+    });
+
+    const job = await service.createJob({
+      inputPaths: [inputPath],
+      targetFormat: "pdf",
+      outputDirectory,
+      collisionPolicy: "rename"
+    });
+
+    const settledJob = await waitForJobToSettle(service, job.id, 1);
+    expect(settledJob.items[0]).toMatchObject({
+      inputPath,
+      status: "success"
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.args).toContain("--pdf-engine=xelatex");
+    expect(calls[0]?.args).toContain("mainfont=Apple SD Gothic Neo");
+    expect(calls[0]?.args).toContain("CJKmainfont=Apple SD Gothic Neo");
+  });
+
+  it("treats missing PDF engine execution errors as pdf_engine_missing", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
+    const outputDirectory = path.join(tempRoot, "out");
+    const inputPath = path.join(tempRoot, "sample.md");
+    createdDirectories.push(tempRoot);
+    await fs.writeFile(inputPath, "# sample");
+
+    const { entries, logger } = createLoggerCapture();
+    const service = createService({
+      logger,
+      executePandoc: async () => {
+        throw new Error("pdflatex: createProcess: find_executable: failed (errnoToString failed)");
+      }
+    });
+
+    const job = await service.createJob({
+      inputPaths: [inputPath],
+      targetFormat: "pdf",
+      outputDirectory,
+      collisionPolicy: "rename"
+    });
+
+    const failedItem = await waitForFailedItem(service, job.id);
+    expect(failedItem).toMatchObject({
+      inputPath,
+      status: "failed",
+      errorCode: "pdf_engine_missing",
+      errorMessage: PDF_ENGINE_MISSING_MESSAGE,
+      errorDetails: "pdflatex: createProcess: find_executable: failed (errnoToString failed)"
+    });
+    expect(entries).toContainEqual({
+      level: "error",
+      event: "pandoc:execution_failed",
+      details: {
+        jobId: job.id,
+        itemId: failedItem.id,
+        errorCode: "pdf_engine_missing",
+        processExitCode: null
+      }
     });
   });
 
@@ -483,6 +561,42 @@ describe("ConversionService.createJob", () => {
       failed: 1,
       skipped: 0
     });
+  });
+
+  it("uses the Windows Korean font profile when the environment reports win32", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
+    const outputDirectory = path.join(tempRoot, "out");
+    const inputPath = path.join(tempRoot, "sample.md");
+    createdDirectories.push(tempRoot);
+    await fs.writeFile(inputPath, "# sample");
+
+    const calls: Array<{ args: string[]; cwd: string }> = [];
+    const service = createService({
+      environmentStatus: {
+        ...createEnvironmentStatus(),
+        platform: "win32",
+        pdfFontProfile: "Malgun Gothic"
+      },
+      executePandoc: async (args, cwd) => {
+        calls.push({ args, cwd });
+      }
+    });
+
+    const job = await service.createJob({
+      inputPaths: [inputPath],
+      targetFormat: "pdf",
+      outputDirectory,
+      collisionPolicy: "rename"
+    });
+
+    const settledJob = await waitForJobToSettle(service, job.id, 1);
+    expect(settledJob.items[0]).toMatchObject({
+      inputPath,
+      status: "success"
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.args).toContain("mainfont=Malgun Gothic");
+    expect(calls[0]?.args).toContain("CJKmainfont=Malgun Gothic");
   });
 
   it("processes queued items serially so the second item does not start before the first finishes", async () => {

@@ -20,12 +20,15 @@ describe("EnvironmentBanner", () => {
       pandocAvailable: true,
       pandocVersion: "pandoc 3.7.0",
       pdfExportAvailable: true,
+      pdfEngineName: "xelatex",
+      pdfFontProfile: "Apple SD Gothic Neo",
       platform: "darwin",
       issues: []
     });
 
     expect(markup).toContain("Environment ready.");
     expect(markup).toContain("Pandoc pandoc 3.7.0 is available.");
+    expect(markup).toContain("PDF export is configured via xelatex using Apple SD Gothic Neo.");
   });
 
   it("renders the exact issue messages for supported environment error categories", () => {
@@ -33,6 +36,8 @@ describe("EnvironmentBanner", () => {
       pandocAvailable: false,
       pandocVersion: null,
       pdfExportAvailable: false,
+      pdfEngineName: null,
+      pdfFontProfile: null,
       platform: "unsupported",
       issues: [
         {

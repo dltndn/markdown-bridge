@@ -12,7 +12,10 @@ export function EnvironmentBanner({ status }: EnvironmentBannerProps) {
   if (status.issues.length === 0) {
     return (
       <div className="banner banner--success">
-        <strong>Environment ready.</strong> Pandoc {status.pandocVersion ?? "detected"} is available.
+        <strong>Environment ready.</strong> Pandoc {status.pandocVersion ?? "detected"} is available.{" "}
+        {status.pdfEngineName && status.pdfFontProfile
+          ? `PDF export is configured via ${status.pdfEngineName} using ${status.pdfFontProfile}.`
+          : null}
       </div>
     );
   }
@@ -28,4 +31,3 @@ export function EnvironmentBanner({ status }: EnvironmentBannerProps) {
     </div>
   );
 }
-

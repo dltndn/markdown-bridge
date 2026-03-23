@@ -27,10 +27,15 @@ describe("buildPandocArgs", () => {
   });
 
   it("builds Markdown to PDF arguments", () => {
-    expect(buildPandocArgs("input.md", "output.pdf", "md", "pdf")).toEqual([
+    expect(buildPandocArgs("input.md", "output.pdf", "md", "pdf", "xelatex", "Apple SD Gothic Neo")).toEqual([
       "input.md",
       "-f",
       "markdown",
+      "--pdf-engine=xelatex",
+      "-V",
+      "mainfont=Apple SD Gothic Neo",
+      "-V",
+      "CJKmainfont=Apple SD Gothic Neo",
       "-o",
       "output.pdf"
     ]);
@@ -40,13 +45,25 @@ describe("buildPandocArgs", () => {
     const cases = [
       ["input.docx", "output.md", "docx", "md"],
       ["input.md", "output.docx", "md", "docx"],
-      ["input.md", "output.pdf", "md", "pdf"]
+      ["input.md", "output.pdf", "md", "pdf", "xelatex", "Apple SD Gothic Neo"]
     ] as const;
 
-    for (const [inputPath, outputPath, inputFormat, targetFormat] of cases) {
-      const args = buildPandocArgs(inputPath, outputPath, inputFormat, targetFormat);
+    for (const [inputPath, outputPath, inputFormat, targetFormat, pdfEngineName, pdfFontProfile] of cases) {
+      const args = buildPandocArgs(inputPath, outputPath, inputFormat, targetFormat, pdfEngineName, pdfFontProfile);
       expect(args.slice(-2)).toEqual(["-o", outputPath]);
     }
+  });
+
+  it("requires a PDF engine for Markdown to PDF arguments", () => {
+    expect(() => buildPandocArgs("input.md", "output.pdf", "md", "pdf")).toThrow(
+      "PDF engine is required for Markdown to PDF conversion."
+    );
+  });
+
+  it("requires a PDF font profile for Markdown to PDF arguments", () => {
+    expect(() => buildPandocArgs("input.md", "output.pdf", "md", "pdf", "xelatex")).toThrow(
+      "PDF font profile is required for Markdown to PDF conversion."
+    );
   });
 
   it("throws for unsupported paths", () => {

@@ -89,6 +89,8 @@ describe("shared contract shapes", () => {
       pandocAvailable: true,
       pandocVersion: "pandoc 3.7.0",
       pdfExportAvailable: false,
+      pdfEngineName: null,
+      pdfFontProfile: null,
       platform: "unsupported",
       issues: [
         {
@@ -102,6 +104,8 @@ describe("shared contract shapes", () => {
       pandocAvailable: true,
       pandocVersion: "pandoc 3.7.0",
       pdfExportAvailable: false,
+      pdfEngineName: null,
+      pdfFontProfile: null,
       platform: "unsupported",
       issues: [
         {

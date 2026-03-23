@@ -200,6 +200,69 @@ select {
   gap: 12px;
 }
 
+.toggle-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(31, 36, 48, 0.08);
+  background: var(--surface-strong);
+}
+
+.toggle-card strong,
+.toggle-card small {
+  display: block;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.toggle-switch input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.toggle-switch__track {
+  position: relative;
+  width: 52px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(31, 36, 48, 0.16);
+  transition: background 160ms ease;
+}
+
+.toggle-switch__track::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fffaf1;
+  box-shadow: 0 4px 12px rgba(31, 36, 48, 0.18);
+  transition:
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+.toggle-switch input:checked + .toggle-switch__track {
+  background: linear-gradient(135deg, #b0472d, #7d261d);
+}
+
+.toggle-switch input:checked + .toggle-switch__track::after {
+  transform: translateX(20px);
+}
+
 .selection-panel {
   margin: 18px 0;
 }

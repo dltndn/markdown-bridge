@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { CollisionPolicy, ConversionFormat, ConversionRequest } from "../../../shared/contracts";
+import type { CollisionPolicy, ConversionFormat, ConversionRequest, MarkdownCleanupMode } from "../../../shared/contracts";
 import type { Dispatch, SetStateAction } from "react";
 
 const OUTPUT_DIRECTORY_STORAGE_KEY = "markdown-bridge.output-directory";
@@ -18,6 +18,10 @@ function blocksPdfToMarkdown(selectedFiles: string[], targetFormat: ConversionFo
 
 function isMarkdownFile(filePath: string): boolean {
   return filePath.toLowerCase().endsWith(".md");
+}
+
+function isDocxFile(filePath: string): boolean {
+  return filePath.toLowerCase().endsWith(".docx");
 }
 
 export function blocksMatchingMarkdownState(selectedFiles: string[], targetFormat: ConversionFormat): boolean {
@@ -54,9 +58,11 @@ export function ConversionForm({
 }: ConversionFormProps) {
   const [targetFormat, setTargetFormat] = useState<ConversionFormat>("md");
   const [collisionPolicy, setCollisionPolicy] = useState<CollisionPolicy>("rename");
+  const [markdownCleanupMode, setMarkdownCleanupMode] = useState<MarkdownCleanupMode>("preserve");
   const [submitting, setSubmitting] = useState(false);
   const blockedByUnsupportedCombination = blocksPdfToMarkdown(selectedFiles, targetFormat);
   const blockedByMatchingMarkdownState = blocksMatchingMarkdownState(selectedFiles, targetFormat);
+  const showMarkdownCleanupToggle = targetFormat === "md" && selectedFiles.some(isDocxFile);
   const supportedHint = useMemo(
     // This hint is static today. If the form becomes capability-driven, cover the
     // IPC-to-renderer wiring with a test instead of relying on copy-only regressions.
@@ -119,7 +125,8 @@ export function ConversionForm({
         inputPaths: selectedFiles,
         targetFormat,
         outputDirectory,
-        collisionPolicy
+        collisionPolicy,
+        markdownCleanupMode
       });
     } finally {
       setSubmitting(false);
@@ -157,7 +164,27 @@ export function ConversionForm({
             <option value="overwrite">Overwrite</option>
           </select>
         </label>
+
       </div>
+
+      {showMarkdownCleanupToggle ? (
+        <label className="toggle-card">
+          <span>
+            <strong>AI cleanup mode</strong>
+            <small className="muted">
+              DOCX -&gt; MD only. Strips Markdown attributes, anchors, image size metadata, and similar Pandoc-only noise.
+            </small>
+          </span>
+          <span className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={markdownCleanupMode === "ai"}
+              onChange={(event) => setMarkdownCleanupMode(event.target.checked ? "ai" : "preserve")}
+            />
+            <span aria-hidden="true" className="toggle-switch__track" />
+          </span>
+        </label>
+      ) : null}
 
       <div className="selection-panel">
         <div>

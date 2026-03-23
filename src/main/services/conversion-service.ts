@@ -1,12 +1,13 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { ConversionFormat, ConversionJob, ConversionRequest, JobItem, JobUpdateEvent } from "../../shared/contracts";
+import type { ConversionFormat, ConversionJob, ConversionRequest, JobItem, JobUpdateEvent, MarkdownCleanupMode } from "../../shared/contracts";
 import { noopMainLogger, type MainLogger } from "../logging";
 import type { EnvironmentService } from "../system/environment";
 import { buildPandocArgs } from "./command-builder";
 import type { JobStore } from "./job-store";
 import { PDF_ENGINE_MISSING_MESSAGE } from "../../shared/messages";
+import { sanitizeDocxMarkdownForAi } from "./markdown-cleanup";
 import {
   ensureDirectoryExists,
   getFormatFromPath,
@@ -79,6 +80,7 @@ export class ConversionService {
           inputFormat,
           outputPath: null,
           targetFormat: request.targetFormat,
+          markdownCleanupMode: normalizeMarkdownCleanupMode(request.markdownCleanupMode),
           status: "queued" as const,
           errorCode: null,
           errorMessage: null,
@@ -258,6 +260,9 @@ export class ConversionService {
         environment.pdfFontProfile
       );
       await this.executePandoc(args, path.dirname(item.outputPath));
+      if (item.inputFormat === "docx" && item.targetFormat === "md") {
+        await sanitizeMarkdownOutput(item.outputPath, item.markdownCleanupMode ?? "preserve");
+      }
       this.update(jobId, itemId, { status: "success" });
     } catch (error) {
       const failurePatch = buildConversionFailurePatch(error);
@@ -322,6 +327,19 @@ export class ConversionService {
   }
 }
 
+async function sanitizeMarkdownOutput(outputPath: string, cleanupMode: MarkdownCleanupMode): Promise<void> {
+  if (cleanupMode !== "ai") {
+    return;
+  }
+
+  const markdown = await fs.readFile(outputPath, "utf8");
+  const sanitizedMarkdown = sanitizeDocxMarkdownForAi(markdown);
+
+  if (sanitizedMarkdown !== markdown) {
+    await fs.writeFile(outputPath, sanitizedMarkdown, "utf8");
+  }
+}
+
 function buildUnsupportedFormatItem(
   inputPath: string,
   targetFormat: ConversionFormat
@@ -331,6 +349,7 @@ function buildUnsupportedFormatItem(
     inputFormat: "md",
     outputPath: null,
     targetFormat,
+    markdownCleanupMode: "preserve",
     status: "failed",
     errorCode: "unsupported_format",
     errorMessage: "Unsupported file extension.",
@@ -352,6 +371,7 @@ function buildUnsupportedPathItem(
     inputFormat,
     outputPath: null,
     targetFormat,
+    markdownCleanupMode: "preserve",
     status: "failed",
     errorCode,
     errorMessage: "This conversion path is not available in the current MVP scaffold.",
@@ -367,6 +387,10 @@ function validateRequest(request: ConversionRequest): void {
   if (!request.outputDirectory.trim()) {
     throw createNormalizedError("invalid_configuration", "Output directory is required.");
   }
+}
+
+function normalizeMarkdownCleanupMode(cleanupMode: MarkdownCleanupMode | undefined): MarkdownCleanupMode {
+  return cleanupMode === "ai" ? "ai" : "preserve";
 }
 
 function createNormalizedError(code: NormalizedErrorCode, message: string, cause?: unknown): NormalizedServiceError {

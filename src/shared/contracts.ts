@@ -3,6 +3,7 @@ export type PlatformName = "darwin" | "win32" | "unsupported";
 export type ConversionFormat = "md" | "docx" | "pdf";
 
 export type CollisionPolicy = "skip" | "overwrite" | "rename";
+export type MarkdownCleanupMode = "preserve" | "ai";
 
 export type JobItemStatus =
   | "queued"
@@ -37,6 +38,7 @@ export type ConversionRequest = {
   targetFormat: ConversionFormat;
   outputDirectory: string;
   collisionPolicy: CollisionPolicy;
+  markdownCleanupMode?: MarkdownCleanupMode;
 };
 
 export type JobItem = {
@@ -45,6 +47,7 @@ export type JobItem = {
   inputFormat: ConversionFormat;
   outputPath: string | null;
   targetFormat: ConversionFormat;
+  markdownCleanupMode?: MarkdownCleanupMode;
   status: JobItemStatus;
   errorCode: string | null;
   errorMessage: string | null;

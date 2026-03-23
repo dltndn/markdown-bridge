@@ -37,6 +37,35 @@ describe("ConversionForm", () => {
     expect(markup).toContain("Drag-and-drop, drag-in folders, and file watching stay out of scope for now.");
   });
 
+  it("renders the AI cleanup toggle when docx files target markdown", () => {
+    const markup = renderToStaticMarkup(
+      <ConversionForm
+        selectedFiles={["/tmp/alpha.docx"]}
+        onFilesChange={() => undefined}
+        outputDirectory="/tmp/out"
+        onOutputDirectoryChange={() => undefined}
+        onSubmit={async () => undefined}
+      />
+    );
+
+    expect(markup).toContain("AI cleanup mode");
+    expect(markup).toContain("type=\"checkbox\"");
+  });
+
+  it("hides the AI cleanup toggle when docx files are not selected", () => {
+    const markup = renderToStaticMarkup(
+      <ConversionForm
+        selectedFiles={["/tmp/alpha.md"]}
+        onFilesChange={() => undefined}
+        outputDirectory="/tmp/out"
+        onOutputDirectoryChange={() => undefined}
+        onSubmit={async () => undefined}
+      />
+    );
+
+    expect(markup).not.toContain("AI cleanup mode");
+  });
+
   it("keeps the submit action disabled when no files are selected", () => {
     const markup = renderToStaticMarkup(
       <ConversionForm

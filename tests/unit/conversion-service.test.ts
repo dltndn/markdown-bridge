@@ -303,6 +303,97 @@ describe("ConversionService.createJob", () => {
     expect(calls[0]?.args).toContain("CJKmainfont=Apple SD Gothic Neo");
   });
 
+  it("preserves docx to markdown metadata by default", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
+    const outputDirectory = path.join(tempRoot, "out");
+    const inputPath = path.join(tempRoot, "sample.docx");
+    createdDirectories.push(tempRoot);
+    await fs.writeFile(inputPath, "docx placeholder");
+
+    const service = createService({
+      executePandoc: async (args) => {
+        const outputIndex = args.indexOf("-o");
+        const outputPath = args[outputIndex + 1];
+
+        await fs.writeFile(
+          outputPath,
+          [
+            "# 제목 {#_Toc193877886 .anchor}",
+            "",
+            "![img](media/image1.png){width=\"6.298611111111111in\"",
+            "height=\"2.9944444444444445in\"}",
+            ""
+          ].join("\n"),
+          "utf8"
+        );
+      }
+    });
+
+    const job = await service.createJob({
+      inputPaths: [inputPath],
+      targetFormat: "md",
+      outputDirectory,
+      collisionPolicy: "rename"
+    });
+
+    const settledJob = await waitForJobToSettle(service, job.id, 1);
+    expect(settledJob.items[0]).toMatchObject({
+      inputPath,
+      status: "success"
+    });
+
+    const outputPath = settledJob.items[0]?.outputPath;
+    expect(outputPath).not.toBeNull();
+    await expect(fs.readFile(outputPath!, "utf8")).resolves.toBe(
+      "# 제목 {#_Toc193877886 .anchor}\n\n![img](media/image1.png){width=\"6.298611111111111in\"\nheight=\"2.9944444444444445in\"}\n"
+    );
+  });
+
+  it("applies AI cleanup mode to docx to markdown output", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
+    const outputDirectory = path.join(tempRoot, "out");
+    const inputPath = path.join(tempRoot, "sample.docx");
+    createdDirectories.push(tempRoot);
+    await fs.writeFile(inputPath, "docx placeholder");
+
+    const service = createService({
+      executePandoc: async (args) => {
+        const outputIndex = args.indexOf("-o");
+        const outputPath = args[outputIndex + 1];
+
+        await fs.writeFile(
+          outputPath,
+          [
+            "# 제목 {#_Toc193877886 .anchor}",
+            "",
+            "[표시문구]{.mark}",
+            "",
+            "![img](media/image1.png){width=\"6.298611111111111in\"",
+            "height=\"2.9944444444444445in\"}",
+            "",
+            "{#_Ref .anchor}",
+            "<!-- hidden -->",
+            ""
+          ].join("\n"),
+          "utf8"
+        );
+      }
+    });
+
+    const job = await service.createJob({
+      inputPaths: [inputPath],
+      targetFormat: "md",
+      outputDirectory,
+      collisionPolicy: "rename",
+      markdownCleanupMode: "ai"
+    });
+
+    const settledJob = await waitForJobToSettle(service, job.id, 1);
+    const outputPath = settledJob.items[0]?.outputPath;
+    expect(outputPath).not.toBeNull();
+    await expect(fs.readFile(outputPath!, "utf8")).resolves.toBe("# 제목\n\n표시문구\n");
+  });
+
   it("treats missing PDF engine execution errors as pdf_engine_missing", async () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "markdown-bridge-"));
     const outputDirectory = path.join(tempRoot, "out");
